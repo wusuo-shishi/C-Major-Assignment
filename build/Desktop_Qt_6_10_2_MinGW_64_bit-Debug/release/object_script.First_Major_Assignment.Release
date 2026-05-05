@@ -1,0 +1,14 @@
+release/BaoBao.o
+release/BaoBaoSub.o
+release/GameWidget.o
+release/ResultWidget.o
+release/SelectWidget.o
+release/StartWidget.o
+release/main.o
+release/MainWindow.o
+release/qrc_res.o
+release/moc_GameWidget.o
+release/moc_MainWindow.o
+release/moc_ResultWidget.o
+release/moc_SelectWidget.o
+release/moc_StartWidget.o

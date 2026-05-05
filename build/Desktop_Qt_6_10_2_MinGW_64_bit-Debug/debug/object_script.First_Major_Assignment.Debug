@@ -1,0 +1,14 @@
+debug/BaoBao.o
+debug/BaoBaoSub.o
+debug/GameWidget.o
+debug/ResultWidget.o
+debug/SelectWidget.o
+debug/StartWidget.o
+debug/main.o
+debug/MainWindow.o
+debug/qrc_res.o
+debug/moc_GameWidget.o
+debug/moc_MainWindow.o
+debug/moc_ResultWidget.o
+debug/moc_SelectWidget.o
+debug/moc_StartWidget.o
