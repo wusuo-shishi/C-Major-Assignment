@@ -226,7 +226,8 @@ void GameWidget::updatePhysics()
         }
     }
 
-    bool currentTurnMoving = false;  // 当前阵营是否有豹豹在移动//  标记当前阵营是否还在移动
+    bool currentTurnMoving = false;  // 当前阵营是否有豹豹在移动
+    bool hasMovingBaoBao = false;  // 是否有任何豹豹在移动
 
     for (int i = 0; i < 6; i++)
     {
@@ -236,6 +237,7 @@ void GameWidget::updatePhysics()
         if (!bao.isMoving || bao.remainingDistance <= 0) continue;
 
         currentTurnMoving = true;
+        hasMovingBaoBao = true;
 
         // 计算移动距离
         qreal moveDistance = qSqrt(bao.velocityF.x() * bao.velocityF.x() + bao.velocityF.y() * bao.velocityF.y());
@@ -356,12 +358,12 @@ void GameWidget::updatePhysics()
             bao.atkLabel->adjustSize();
         }
     }
-    // 刷新画面
-    if (currentTurnMoving) {
-        update();
-    }
-}
+    // 更新是否有豹豹移动的状态
+    m_hasMovingBaoBao = hasMovingBaoBao;
 
+    // 刷新画面（始终刷新以显示旋转动画）
+    update();
+}
 
 // 处理豹豹之间的碰撞
 void GameWidget::handleCollisions()
@@ -574,22 +576,11 @@ void GameWidget::paintEvent(QPaintEvent *event)
 
     // 绘制6个豹豹的碰撞箱
     for (int i = 0; i < 6; i++) {
-        if(order && i < 3) {
+        if (i < 3) {
             QPen pen(Qt::red);
             pen.setWidth(4);
             painter.setPen(pen);
-        }
-        if(order && i > 2) {
-            QPen pen(Qt::white);
-            pen.setWidth(2);
-            painter.setPen(pen);
-        }
-        if(!order && i < 3) {
-            QPen pen(Qt::white);
-            pen.setWidth(2);
-            painter.setPen(pen);
-        }
-        if(!order && i > 2) {
+        } else {
             QPen pen(QColor(30, 144, 255));
             pen.setWidth(5);
             painter.setPen(pen);
@@ -605,9 +596,14 @@ void GameWidget::paintEvent(QPaintEvent *event)
         }
     }
 
-    // 绘制旋转装饰
-    for (int i = 0; i < 6; i++) {
-        drawRotatingDecoration(painter, m_baobaos[i]);
+    // 绘制旋转装饰（只对当前行动方绘制，且没有豹豹在移动时）
+    if (!m_hasMovingBaoBao) {
+        for (int i = 0; i < 6; i++) {
+            bool isCurrentTurn = (order && i < 3) || (!order && i > 2);
+            if (isCurrentTurn) {
+                drawRotatingDecoration(painter, m_baobaos[i]);
+            }
+        }
     }
 }
 
@@ -961,9 +957,7 @@ void GameWidget::drawRotatingDecoration(QPainter& painter, BaoBaoObject& bao) {
         arrowHead.closeSubpath();
         painter.drawPath(arrowHead);
     };
-    drawArrow(10);
     drawArrow(170);
-    drawArrow(190);
     drawArrow(350);
     painter.restore();
 }

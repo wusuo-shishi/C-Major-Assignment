@@ -25,7 +25,7 @@ StartWidget::StartWidget(QWidget *parent)
     ExitButton->setText("");
 
     StartButton->setFixedSize(200, 80);
-    ExitButton->setFixedSize(200, 80);
+    ExitButton->setFixedSize(80, 80);
 
     // ========== 主布局 ==========
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -35,7 +35,7 @@ StartWidget::StartWidget(QWidget *parent)
     QHBoxLayout *topLayout = new QHBoxLayout();
     topLayout->addStretch();                    // 左侧弹性空间，把按钮推到右边
     topLayout->addWidget(ExitButton);           // 退出按钮在右上角
-    topLayout->setContentsMargins(0, 20, 30, 0); // 上边距20，右边距30
+    topLayout->setContentsMargins(0, 20, 10, 0); // 上边距20，右边距10（减小右边距，使按钮更靠右）
 
     // ========== 开始按钮区域 ==========
     QVBoxLayout *startLayout = new QVBoxLayout();

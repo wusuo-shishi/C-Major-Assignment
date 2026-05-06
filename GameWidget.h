@@ -80,6 +80,9 @@ private:
     // 中心矩形
     QRect m_centerRect;
 
+    // 是否有豹豹正在移动
+    bool m_hasMovingBaoBao = false;
+
     void initBaobaos();               // 初始化6个豹豹
     void updatePhysics();             // 更新物理（移动+碰撞）
     void drawRotatingDecoration(QPainter& painter, BaoBaoObject& bao);  // 绘制旋转装饰
