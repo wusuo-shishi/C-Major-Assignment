@@ -10,8 +10,8 @@
 #include <QPaintEvent>
 #include <QVector>
 #include <QMouseEvent>
+#include "BaoBaoType.h"
 
-// 豹豹 - 全部使用浮点类型保证精度
 class BaoBaoObject {
 public:
     bool justCollided = false;   // 防止同一帧内重复碰撞
@@ -24,10 +24,12 @@ public:
     QPointF velocityF;       // 速度向量
     qreal remainingDistance; // 剩余行动距离（浮点）
     bool isMoving = false;   // 是否正在移动
+    bool hasActed = false;   // 是否已经行动过
     int hp;
     int atk;
     bool camp;               //阵营
     qreal decorationRotation = 0;  // 装饰圆环旋转角度
+    BaoBaoType type;         // 豹豹类型
 };
 
 class GameWidget : public QWidget
@@ -35,7 +37,6 @@ class GameWidget : public QWidget
     Q_OBJECT
 public:
     explicit GameWidget(QWidget *parent = nullptr);
-    // 析构函数
     ~GameWidget() {
         for (auto &bao : m_baobaos) {
             delete bao.label;
@@ -43,6 +44,7 @@ public:
             delete bao.atkLabel;
         }
     }
+    void setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<BaoBaoType>& p2Types);
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;    // 鼠标按下

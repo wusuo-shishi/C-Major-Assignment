@@ -1,10 +1,12 @@
 <RCC>
     <qresource prefix="/">
         <file>images/start_page.jpg</file>
-        <file>images/TianshiBao.jpg</file>
         <file>images/select dali.jpg</file>
         <file>images/select tianshi.jpg</file>
         <file>images/select xiangjiao.jpg</file>
         <file>images/fanhuijian.png</file>
+        <file>images/tianshi_baobao.jpg</file>
+        <file>images/xiangjiao_baobao.jpg</file>
+        <file>images/dali_baobao.jpg</file>
     </qresource>
 </RCC>

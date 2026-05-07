@@ -3,7 +3,50 @@
 #include <QDebug>
 #include <QTimerEvent>
 #include <QPainterPath>
-#include <cmath>  // 用于fabs函数
+#include <cmath>
+
+struct BaoBaoStats {
+    int hp;
+    int atk;
+};
+
+BaoBaoStats getBaoBaoStats(BaoBaoType type) {
+    switch (type) {
+    case BaoBaoType::Xiangjiao:
+        return {40, 5};
+    case BaoBaoType::Tianshi:
+        return {45, 6};
+    case BaoBaoType::Dali:
+        return {35, 6};
+    case BaoBaoType::Hongwen:
+        return {35, 8};
+    case BaoBaoType::Bengdai:
+        return {50, 4};
+    case BaoBaoType::Pengpeng:
+        return {40, 6};
+    default:
+        return {45, 5};
+    }
+}
+
+QString getBaoBaoImagePath(BaoBaoType type) {
+    switch (type) {
+    case BaoBaoType::Xiangjiao:
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\xiangjiao_baobao.jpg";
+    case BaoBaoType::Tianshi:
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\tianshi_baobao.jpg";
+    case BaoBaoType::Dali:
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\dali_baobao.jpg";
+    case BaoBaoType::Hongwen:
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\xiangjiao_baobao.jpg";
+    case BaoBaoType::Bengdai:
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\xiangjiao_baobao.jpg";
+    case BaoBaoType::Pengpeng:
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\xiangjiao_baobao.jpg";
+    default:
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\xiangjiao_baobao.jpg";
+    }
+}
 
 GameWidget::GameWidget(QWidget *parent)
     : QWidget{parent}
@@ -133,6 +176,9 @@ void GameWidget::mousePressEvent(QMouseEvent *event)
             if (m_baobaos[i].isMoving) {
                 return;
             }
+            if (m_baobaos[i].hasActed) {
+                return;
+            }
             m_isDragging = true;
             m_draggedIndex = i;
             m_dragStartPos = clickPos;
@@ -149,25 +195,33 @@ void GameWidget::mousePressEvent(QMouseEvent *event)
 void GameWidget::mouseMoveEvent(QMouseEvent *event)
 {
     if (m_isDragging) {
-        // 【关键】始终基于原始起点计算拖拽向量，不修改 m_dragStartPos
         QPointF currentPos = event->pos();
         QPointF rawVector = currentPos - m_dragStartPos;
         qreal rawDistance = qSqrt(rawVector.x() * rawVector.x() + rawVector.y() * rawVector.y());
 
-            qreal maxDrag = 200;
+        qreal maxDrag = 200;
+        qreal minDrag = 40;
 
-        // 存储原始拖拽向量（用于预览红线和弹射）
-        m_rawDragVector = rawVector;
-
-        if (rawDistance > maxDrag) {
-            // 只限制鼠标显示位置，不改变拖拽向量的方向
-            qreal ratio = maxDrag / rawDistance;
-            m_currentMousePos = m_dragStartPos + QPointF(rawVector.x() * ratio, rawVector.y() * ratio);
-        } else {
-            m_currentMousePos = currentPos;
+        if (rawDistance < minDrag) {
+            m_rawDragVector = QPointF(0, 0);
+            m_currentMousePos = m_dragStartPos;
+            update();
+            return;
         }
 
-        update();  // 重绘显示拖动线
+        qreal effectiveDistance = rawDistance - minDrag;
+        QPointF effectiveVector = rawVector * (effectiveDistance / rawDistance);
+
+        m_rawDragVector = effectiveVector;
+
+        if (effectiveDistance > maxDrag) {
+            qreal ratio = maxDrag / effectiveDistance;
+            m_currentMousePos = m_dragStartPos + effectiveVector * ratio;
+        } else {
+            m_currentMousePos = m_dragStartPos + effectiveVector;
+        }
+
+        update();
     }
 }
 
@@ -176,33 +230,29 @@ void GameWidget::mouseReleaseEvent(QMouseEvent *)
 {
     if (!m_isDragging || m_draggedIndex == -1) return;
 
-    // 【关键】使用原始拖拽向量（m_rawDragVector）而不是被限制的 m_currentMousePos
     QPointF dragVector = m_rawDragVector;
     qreal dragDistance = qSqrt(dragVector.x() * dragVector.x() + dragVector.y() * dragVector.y());
     qreal maxDrag = 200;
 
-    if (dragDistance < 1) {  // 防止除零
+    if (dragDistance < 1) {
         m_isDragging = false;
         m_draggedIndex = -1;
         m_rawDragVector = QPointF(0, 0);
         return;
     }
 
-    // 限制最大拖拽距离（力度封顶）
     qreal effectiveDistance = qMin(dragDistance, maxDrag);
     qreal ratio = effectiveDistance / maxDrag;
     qreal speed = ratio * 30;
 
-    // 归一化方向向量并取反（反方向弹射）
     QPointF dir(-dragVector.x() / dragDistance, -dragVector.y() / dragDistance);
     QPointF velocityF = dir * speed;
 
-    // 直接赋值浮点速度（不经过整数转换）
     m_baobaos[m_draggedIndex].velocityF = velocityF;
-    m_baobaos[m_draggedIndex].remainingDistance = effectiveDistance * effectiveDistance  / 12.5;  // 行动距离=拖动平方除以12.5
+    m_baobaos[m_draggedIndex].remainingDistance = effectiveDistance * effectiveDistance  / 12.5;
     m_baobaos[m_draggedIndex].isMoving = true;
+    m_baobaos[m_draggedIndex].hasActed = true;
 
-    // 重置拖动状态
     m_isDragging = false;
     m_draggedIndex = -1;
     m_rawDragVector = QPointF(0, 0);
@@ -308,30 +358,46 @@ void GameWidget::updatePhysics()
 
     handleCollisions();
 
-    // 使用 static 变量记录上一帧是否有移动
     static bool lastFrameHadMovement = false;
 
     if (!currentTurnMoving) {
-        // 当前帧没有移动的豹豹
         if (lastFrameHadMovement) {
-            // 上一帧有移动，这一帧没有了 → 切换阵营
-            order = !order;
-
-            //更新camp状态
-            for(int i=0; i <3; i++)
-            {
-                m_baobaos[i].camp = order;
-            }
-            for(int i=3; i <6; i++)
-            {
-                m_baobaos[i].camp = !order;
+            bool allActed = true;
+            int startIdx = order ? 0 : 3;
+            for (int i = startIdx; i < startIdx + 3; i++) {
+                if (!m_baobaos[i].hasActed) {
+                    allActed = false;
+                    break;
+                }
             }
 
-            lastFrameHadMovement = false;  // 重置标记
+            if (allActed) {
+                order = !order;
+
+                for(int i=0; i <3; i++)
+                {
+                    m_baobaos[i].camp = order;
+                    m_baobaos[i].hasActed = false;
+                }
+                for(int i=3; i <6; i++)
+                {
+                    m_baobaos[i].camp = !order;
+                    m_baobaos[i].hasActed = false;
+                }
+
+                for (int i = 0; i < 6; i++) {
+                    m_baobaos[i].atk = getBaoBaoStats(m_baobaos[i].type).atk;
+                    if (m_baobaos[i].atkLabel) {
+                        m_baobaos[i].atkLabel->setText(QString("攻击力: %1").arg(m_baobaos[i].atk));
+                        m_baobaos[i].atkLabel->adjustSize();
+                    }
+                }
+            }
+
+            lastFrameHadMovement = false;
             update();
         }
     } else {
-        // 当前帧有移动的豹豹
         lastFrameHadMovement = true;
     }
 
@@ -425,6 +491,61 @@ void GameWidget::handleCollisions()
                 else if(baoB.camp == true && baoA.camp == false)
                 {
                     baoA.hp -= baoB.atk;
+                }
+
+                // ========== 技能效果处理 ==========
+                // 确定主动方和被动方（用于技能判断）
+                BaoBaoObject* activeSkill = nullptr;
+                BaoBaoObject* passiveSkill = nullptr;
+                if (baoA.isMoving && !baoB.isMoving) {
+                    activeSkill = &baoA;
+                    passiveSkill = &baoB;
+                } else if (!baoA.isMoving && baoB.isMoving) {
+                    activeSkill = &baoB;
+                    passiveSkill = &baoA;
+                } else if (baoA.isMoving && baoB.isMoving) {
+                    qreal speedA = std::sqrt(baoA.velocityF.x() * baoA.velocityF.x() +
+                                             baoA.velocityF.y() * baoA.velocityF.y());
+                    qreal speedB = std::sqrt(baoB.velocityF.x() * baoB.velocityF.x() +
+                                             baoB.velocityF.y() * baoB.velocityF.y());
+                    if (speedA >= speedB) {
+                        activeSkill = &baoA;
+                        passiveSkill = &baoB;
+                    } else {
+                        activeSkill = &baoB;
+                        passiveSkill = &baoA;
+                    }
+                }
+
+                // 橡胶海豹技能：弹簧助推器 - 每次碰撞后提升2点攻击力
+                if (activeSkill && activeSkill->type == BaoBaoType::Xiangjiao) {
+                    activeSkill->atk += 2;
+                    if (activeSkill->atkLabel) {
+                        activeSkill->atkLabel->setText(QString("攻击力: %1").arg(activeSkill->atk));
+                        activeSkill->atkLabel->adjustSize();
+                    }
+                }
+
+                // 天使海豹技能：按摩擒拿手 - 碰到己方队友时回复相当于攻击力的血量
+                if (activeSkill && passiveSkill && 
+                    activeSkill->type == BaoBaoType::Tianshi &&
+                    activeSkill->camp == passiveSkill->camp) {
+                    passiveSkill->hp += activeSkill->atk;
+                    if (passiveSkill->hpLabel) {
+                        passiveSkill->hpLabel->setText(QString("%1").arg(passiveSkill->hp));
+                        passiveSkill->hpLabel->adjustSize();
+                    }
+                }
+
+                // 大力海豹技能：友情接力棒 - 碰到己方队友时提升3点攻击力
+                if (activeSkill && passiveSkill && 
+                    activeSkill->type == BaoBaoType::Dali &&
+                    activeSkill->camp == passiveSkill->camp) {
+                    passiveSkill->atk += 3;
+                    if (passiveSkill->atkLabel) {
+                        passiveSkill->atkLabel->setText(QString("攻击力: %1").arg(passiveSkill->atk));
+                        passiveSkill->atkLabel->adjustSize();
+                    }
                 }
 
                 // ========== 2. 确定主动方和被动方 ==========
@@ -600,7 +721,7 @@ void GameWidget::paintEvent(QPaintEvent *event)
     if (!m_hasMovingBaoBao) {
         for (int i = 0; i < 6; i++) {
             bool isCurrentTurn = (order && i < 3) || (!order && i > 2);
-            if (isCurrentTurn) {
+            if (isCurrentTurn && !m_baobaos[i].hasActed) {
                 drawRotatingDecoration(painter, m_baobaos[i]);
             }
         }
@@ -960,4 +1081,66 @@ void GameWidget::drawRotatingDecoration(QPainter& painter, BaoBaoObject& bao) {
     drawArrow(170);
     drawArrow(350);
     painter.restore();
+}
+
+void GameWidget::setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<BaoBaoType>& p2Types) {
+    for (int i = 0; i < 3; i++) {
+        if (i < p1Types.size() && i < m_baobaos.size()) {
+            m_baobaos[i].type = p1Types[i];
+            BaoBaoStats stats = getBaoBaoStats(p1Types[i]);
+            m_baobaos[i].hp = stats.hp;
+            m_baobaos[i].atk = stats.atk;
+            
+            QString imagePath = getBaoBaoImagePath(p1Types[i]);
+            QPixmap originalPixmap(imagePath);
+            QPixmap circlePixmap(80, 80);
+            circlePixmap.fill(Qt::transparent);
+            QPainter painter(&circlePixmap);
+            painter.setRenderHint(QPainter::Antialiasing);
+            QPainterPath path;
+            path.addEllipse(0, 0, 80, 80);
+            painter.setClipPath(path);
+            painter.drawPixmap(0, 0, 80, 80, originalPixmap);
+            painter.end();
+            
+            if (m_baobaos[i].label) {
+                m_baobaos[i].label->setPixmap(circlePixmap);
+            }
+        }
+    }
+    for (int i = 0; i < 3; i++) {
+        if (i < p2Types.size() && (i + 3) < m_baobaos.size()) {
+            m_baobaos[i + 3].type = p2Types[i];
+            BaoBaoStats stats = getBaoBaoStats(p2Types[i]);
+            m_baobaos[i + 3].hp = stats.hp;
+            m_baobaos[i + 3].atk = stats.atk;
+            
+            QString imagePath = getBaoBaoImagePath(p2Types[i]);
+            QPixmap originalPixmap(imagePath);
+            QPixmap circlePixmap(80, 80);
+            circlePixmap.fill(Qt::transparent);
+            QPainter painter(&circlePixmap);
+            painter.setRenderHint(QPainter::Antialiasing);
+            QPainterPath path;
+            path.addEllipse(0, 0, 80, 80);
+            painter.setClipPath(path);
+            painter.drawPixmap(0, 0, 80, 80, originalPixmap);
+            painter.end();
+            
+            if (m_baobaos[i + 3].label) {
+                m_baobaos[i + 3].label->setPixmap(circlePixmap);
+            }
+        }
+    }
+    for (int i = 0; i < m_baobaos.size(); i++) {
+        auto& bao = m_baobaos[i];
+        if (bao.hpLabel) {
+            bao.hpLabel->setText(QString("%1").arg(bao.hp));
+            bao.hpLabel->adjustSize();
+        }
+        if (bao.atkLabel) {
+            bao.atkLabel->setText(QString("攻击力: %1").arg(bao.atk));
+            bao.atkLabel->adjustSize();
+        }
+    }
 }

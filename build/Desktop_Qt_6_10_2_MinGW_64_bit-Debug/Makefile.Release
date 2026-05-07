@@ -136,12 +136,14 @@ compiler_rcc_clean:
 	-$(DEL_FILE) release\qrc_res.cpp
 release/qrc_res.cpp: ../../res.qrc \
 		C:/Qt/6.10.2/mingw_64/bin/rcc.exe \
+		../../images/tianshi_baobao.jpg \
 		../../images/select\ tianshi.jpg \
+		../../images/xiangjiao_baobao.jpg \
 		../../images/select\ dali.jpg \
 		../../images/fanhuijian.png \
 		../../images/select\ xiangjiao.jpg \
 		../../images/start_page.jpg \
-		../../images/TianshiBao.jpg
+		../../images/dali_baobao.jpg
 	C:\Qt\6.10.2\mingw_64\bin\rcc.exe -name res --no-zstd ..\..\res.qrc -o release\qrc_res.cpp
 
 compiler_moc_predefs_make_all: release/moc_predefs.h
@@ -374,6 +376,7 @@ release/moc_GameWidget.cpp: ../../GameWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QVector \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/qvector.h \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/QMouseEvent \
+		../../BaoBaoType.h \
 		release/moc_predefs.h \
 		C:/Qt/6.10.2/mingw_64/bin/moc.exe
 	C:\Qt\6.10.2\mingw_64\bin\moc.exe $(DEFINES) --include D:/MyCode/QtCreator/First_Major_Assignment/build/Desktop_Qt_6_10_2_MinGW_64_bit-Debug/release/moc_predefs.h -IC:/Qt/6.10.2/mingw_64/mkspecs/win32-g++ -ID:/MyCode/QtCreator/First_Major_Assignment -IC:/Qt/6.10.2/mingw_64/include -IC:/Qt/6.10.2/mingw_64/include/QtWidgets -IC:/Qt/6.10.2/mingw_64/include/QtGui -IC:/Qt/6.10.2/mingw_64/include/QtCore -I. -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++ -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32 -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/backward -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include-fixed -IC:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include ..\..\GameWidget.h -o release\moc_GameWidget.cpp
@@ -601,6 +604,7 @@ release/moc_MainWindow.cpp: ../../MainWindow.h \
 		C:/Qt/6.10.2/mingw_64/include/QtWidgets/qapplication.h \
 		../../SelectWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QEvent \
+		../../BaoBaoType.h \
 		../../GameWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/QPixmap \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
@@ -1047,6 +1051,7 @@ release/moc_SelectWidget.cpp: ../../SelectWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/qpicture.h \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/qtextdocument.h \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QEvent \
+		../../BaoBaoType.h \
 		release/moc_predefs.h \
 		C:/Qt/6.10.2/mingw_64/bin/moc.exe
 	C:\Qt\6.10.2\mingw_64\bin\moc.exe $(DEFINES) --include D:/MyCode/QtCreator/First_Major_Assignment/build/Desktop_Qt_6_10_2_MinGW_64_bit-Debug/release/moc_predefs.h -IC:/Qt/6.10.2/mingw_64/mkspecs/win32-g++ -ID:/MyCode/QtCreator/First_Major_Assignment -IC:/Qt/6.10.2/mingw_64/include -IC:/Qt/6.10.2/mingw_64/include/QtWidgets -IC:/Qt/6.10.2/mingw_64/include/QtGui -IC:/Qt/6.10.2/mingw_64/include/QtCore -I. -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++ -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32 -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/backward -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include -IC:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include-fixed -IC:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include ..\..\SelectWidget.h -o release\moc_SelectWidget.cpp
@@ -1929,6 +1934,7 @@ release/GameWidget.o: ../../GameWidget.cpp ../../GameWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QVector \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/qvector.h \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/QMouseEvent \
+		../../BaoBaoType.h \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QtMath \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QDebug \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QTimerEvent \
@@ -2365,7 +2371,9 @@ release/SelectWidget.o: ../../SelectWidget.cpp ../../SelectWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/qpicture.h \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/qtextdocument.h \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QEvent \
-		C:/Qt/6.10.2/mingw_64/include/QtGui/QPixmap
+		../../BaoBaoType.h \
+		C:/Qt/6.10.2/mingw_64/include/QtGui/QPixmap \
+		C:/Qt/6.10.2/mingw_64/include/QtCore/QMap
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o release\SelectWidget.o ..\..\SelectWidget.cpp
 
 release/StartWidget.o: ../../StartWidget.cpp ../../StartWidget.h \
@@ -2810,6 +2818,7 @@ release/main.o: ../../main.cpp ../../MainWindow.h \
 		C:/Qt/6.10.2/mingw_64/include/QtWidgets/qapplication.h \
 		../../SelectWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QEvent \
+		../../BaoBaoType.h \
 		../../GameWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/QPixmap \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
@@ -3046,6 +3055,7 @@ release/MainWindow.o: ../../MainWindow.cpp ../../MainWindow.h \
 		C:/Qt/6.10.2/mingw_64/include/QtWidgets/qapplication.h \
 		../../SelectWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QEvent \
+		../../BaoBaoType.h \
 		../../GameWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/QPixmap \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \

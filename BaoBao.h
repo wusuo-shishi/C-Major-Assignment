@@ -25,11 +25,14 @@ public:
 
     QString getName() const;
     int getHp() const;
+    int getAtk() const;
+    QString getSkillDesc() const;
 protected:
-    QString m_name;     //名字
-    int m_hp;           //血量
-    int m_speed;        //速度
-    int m_atk;          //攻击力
+    QString m_name;          //名字
+    int m_hp;               //血量
+    int m_speed;            //速度
+    int m_atk;              //攻击力
+    QString m_skillDesc;    //技能描述
 };
 
 #endif // BAOBAO_H

@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QEvent>
+#include "BaoBaoType.h"
 
 class SelectWidget : public QWidget
 {
@@ -13,6 +14,8 @@ class SelectWidget : public QWidget
 public:
     explicit SelectWidget(QWidget *parent = nullptr);
     bool eventFilter(QObject *obj, QEvent *event) override;
+    QList<BaoBaoType> getP1SelectedTypes() const;
+    QList<BaoBaoType> getP2SelectedTypes() const;
 
 private slots:
     void OnAckClick();
@@ -26,7 +29,10 @@ private:
     QPushButton *circleButtons[6];
     QPushButton *selectButtons[12];
     QLabel *selectLabels[12];
+    QList<int> p1VisibleList;
+    QList<int> p2VisibleList;
     void changeBackground(int index);
+    void updatePlayButtonState();
 signals:
     void goToGameWidget();
     void goToStartWidget();

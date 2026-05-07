@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "BaoBaoType.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -25,7 +26,12 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(stack);
     //绑定信号和槽
     connect(startPage, &StartWidget::goToSelectWidget, [stack](){ stack->setCurrentIndex(1);});
-    connect(selectPage, &SelectWidget::goToGameWidget, [stack](){stack->setCurrentIndex(2);});
+    connect(selectPage, &SelectWidget::goToGameWidget, [this, stack](){
+            QList<BaoBaoType> p1Types = selectPage->getP1SelectedTypes();
+            QList<BaoBaoType> p2Types = selectPage->getP2SelectedTypes();
+            gamePage->setSelectedTypes(p1Types, p2Types);
+            stack->setCurrentIndex(2);
+        });
     connect(selectPage, &SelectWidget::goToStartWidget, [stack](){stack->setCurrentIndex(0);});
     connect(gamePage, &GameWidget::goToResultWidget, [stack](){stack->setCurrentIndex(3);});
     connect(resultPage, &ResultWidget::goToStartWidget, [stack](){stack->setCurrentIndex(0);});
