@@ -84,11 +84,15 @@ SelectWidget::SelectWidget(QWidget *parent)
     int x = (startXPercent + i * spacingPercent) / 100.0 * 1600 - radius;
     int y = centerYPercent / 100.0 * 900 - radius;
     circleButtons[i]->move(x, y);
+    circleButtons[i]->show();
 }
 
 connect(circleButtons[0], &QPushButton::clicked, this, [this]() { changeBackground(1); });
 connect(circleButtons[1], &QPushButton::clicked, this, [this]() { changeBackground(2); });
 connect(circleButtons[2], &QPushButton::clicked, this, [this]() { changeBackground(3); });
+connect(circleButtons[3], &QPushButton::clicked, this, [this]() { changeBackground(4); });
+connect(circleButtons[4], &QPushButton::clicked, this, [this]() { changeBackground(5); });
+connect(circleButtons[5], &QPushButton::clicked, this, [this]() { changeBackground(6); });
 
     int btnRadius = 35;
     double startX = 2.02;
@@ -189,6 +193,15 @@ void SelectWidget::changeBackground(int index) {
         break;
     case 3:
         imagePath = "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\select dali.jpg";
+        break;
+    case 4:
+        imagePath = "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\select_hongwen.jpg";
+        break;
+    case 5:
+        imagePath = "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\select_bengdai.jpg";
+        break;
+    case 6:
+        imagePath = "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\select_pengpeng.jpg";
         break;
     }
     QPixmap pixmap(imagePath);

@@ -12,16 +12,19 @@ class ResultWidget : public QWidget
     Q_OBJECT
 public:
     explicit ResultWidget(QWidget *parent = nullptr);
+    void setWinnerText(bool redWins);
 private slots:
-    void OnBackClick();
-    void OnExitClick();
+    void OnReplayClick();
+    void OnReselectClick();
 
 private:
-    QPushButton *BackButton;
-    QPushButton *ExitButton;
+    QLabel *winnerLabel;
+    QPushButton *ReplayButton;
+    QPushButton *ReselectButton;
 
 signals:
-    void goToStartWidget();
+    void goToGameWidget();
+    void goToSelectWidget();
 };
 
 #endif // RESULTWIDGET_H

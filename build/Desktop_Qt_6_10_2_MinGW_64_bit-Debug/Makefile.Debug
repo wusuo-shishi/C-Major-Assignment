@@ -142,8 +142,14 @@ debug/qrc_res.cpp: ../../res.qrc \
 		../../images/select\ dali.jpg \
 		../../images/fanhuijian.png \
 		../../images/select\ xiangjiao.jpg \
+		../../images/select_pengpeng.jpg \
+		../../images/pengpeng_baobao.jpg \
+		../../images/select_bengdai.jpg \
+		../../images/bengdai_baobao.jpg \
+		../../images/hongwen_baobao.jpg \
 		../../images/start_page.jpg \
-		../../images/dali_baobao.jpg
+		../../images/dali_baobao.jpg \
+		../../images/select_hongwen.jpg
 	C:\Qt\6.10.2\mingw_64\bin\rcc.exe -name res --no-zstd ..\..\res.qrc -o debug\qrc_res.cpp
 
 compiler_moc_predefs_make_all: debug/moc_predefs.h

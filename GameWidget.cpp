@@ -21,7 +21,7 @@ BaoBaoStats getBaoBaoStats(BaoBaoType type) {
     case BaoBaoType::Hongwen:
         return {35, 8};
     case BaoBaoType::Bengdai:
-        return {50, 4};
+        return {35, 5};
     case BaoBaoType::Pengpeng:
         return {40, 6};
     default:
@@ -38,11 +38,11 @@ QString getBaoBaoImagePath(BaoBaoType type) {
     case BaoBaoType::Dali:
         return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\dali_baobao.jpg";
     case BaoBaoType::Hongwen:
-        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\xiangjiao_baobao.jpg";
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\hongwen_baobao.jpg";
     case BaoBaoType::Bengdai:
-        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\xiangjiao_baobao.jpg";
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\bengdai_baobao.jpg";
     case BaoBaoType::Pengpeng:
-        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\xiangjiao_baobao.jpg";
+        return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\pengpeng_baobao.jpg";
     default:
         return "D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\xiangjiao_baobao.jpg";
     }
@@ -253,6 +253,28 @@ void GameWidget::mouseReleaseEvent(QMouseEvent *)
     m_baobaos[m_draggedIndex].isMoving = true;
     m_baobaos[m_draggedIndex].hasActed = true;
 
+    // 嘭嘭海豹技能：高压洒水车 - 行动时，发射2个水弹攻击随机敌方海豹，每个造成4点伤害
+    if (m_baobaos[m_draggedIndex].type == BaoBaoType::Pengpeng) {
+        bool isRedTeam = (m_draggedIndex < 3);
+        QList<int> enemyIndices;
+        for (int i = 0; i < 6; i++) {
+            if (i != m_draggedIndex && ((i < 3) != isRedTeam)) {
+                enemyIndices.append(i);
+            }
+        }
+        if (enemyIndices.size() >= 1) {
+            int firstTarget = enemyIndices[rand() % enemyIndices.size()];
+            m_baobaos[firstTarget].hp -= 4;
+            if (enemyIndices.size() >= 2) {
+                int secondTarget = firstTarget;
+                while (secondTarget == firstTarget) {
+                    secondTarget = enemyIndices[rand() % enemyIndices.size()];
+                }
+                m_baobaos[secondTarget].hp -= 4;
+            }
+        }
+    }
+
     m_isDragging = false;
     m_draggedIndex = -1;
     m_rawDragVector = QPointF(0, 0);
@@ -363,8 +385,7 @@ void GameWidget::updatePhysics()
     if (!currentTurnMoving) {
         if (lastFrameHadMovement) {
             bool allActed = true;
-            int startIdx = order ? 0 : 3;
-            for (int i = startIdx; i < startIdx + 3; i++) {
+            for (int i = 0; i < 6; i++) {
                 if (!m_baobaos[i].hasActed) {
                     allActed = false;
                     break;
@@ -372,17 +393,15 @@ void GameWidget::updatePhysics()
             }
 
             if (allActed) {
-                order = !order;
-
-                for(int i=0; i <3; i++)
-                {
-                    m_baobaos[i].camp = order;
+                order = true;
+                for (int i = 0; i < 6; i++) {
                     m_baobaos[i].hasActed = false;
                 }
-                for(int i=3; i <6; i++)
-                {
+                for (int i = 0; i < 3; i++) {
+                    m_baobaos[i].camp = order;
+                }
+                for (int i = 3; i < 6; i++) {
                     m_baobaos[i].camp = !order;
-                    m_baobaos[i].hasActed = false;
                 }
 
                 for (int i = 0; i < 6; i++) {
@@ -391,6 +410,14 @@ void GameWidget::updatePhysics()
                         m_baobaos[i].atkLabel->setText(QString("攻击力: %1").arg(m_baobaos[i].atk));
                         m_baobaos[i].atkLabel->adjustSize();
                     }
+                }
+            } else {
+                order = !order;
+                for (int i = 0; i < 3; i++) {
+                    m_baobaos[i].camp = order;
+                }
+                for (int i = 3; i < 6; i++) {
+                    m_baobaos[i].camp = !order;
                 }
             }
 
@@ -548,6 +575,36 @@ void GameWidget::handleCollisions()
                     }
                 }
 
+                // 红温海豹技能：急性高血压 - 碰撞到首个敌方海豹时造成200%攻击力的伤害，并立刻停下
+                if (activeSkill && passiveSkill && 
+                    activeSkill->type == BaoBaoType::Hongwen &&
+                    activeSkill->camp != passiveSkill->camp) {
+                    passiveSkill->hp -= activeSkill->atk * 2;
+                    activeSkill->remainingDistance = 0;
+                    activeSkill->isMoving = false;
+                    activeSkill->velocityF = QPointF(0, 0);
+                }
+
+                // 绷带海豹技能：回光返照 - 生命值低于25点时，增加10点攻击力
+                if (activeSkill && activeSkill->type == BaoBaoType::Bengdai && activeSkill->hp < 25 && !activeSkill->bengdaiBuffed) {
+                    int bonusAtk = 10;
+                    activeSkill->atk += bonusAtk;
+                    activeSkill->bengdaiBuffed = true;
+                    if (activeSkill->atkLabel) {
+                        activeSkill->atkLabel->setText(QString("攻击力: %1").arg(activeSkill->atk));
+                        activeSkill->atkLabel->adjustSize();
+                    }
+                }
+                if (passiveSkill && passiveSkill->type == BaoBaoType::Bengdai && passiveSkill->hp < 25 && !passiveSkill->bengdaiBuffed) {
+                    int bonusAtk = 10;
+                    passiveSkill->atk += bonusAtk;
+                    passiveSkill->bengdaiBuffed = true;
+                    if (passiveSkill->atkLabel) {
+                        passiveSkill->atkLabel->setText(QString("攻击力: %1").arg(passiveSkill->atk));
+                        passiveSkill->atkLabel->adjustSize();
+                    }
+                }
+
                 // ========== 2. 确定主动方和被动方 ==========
                 BaoBaoObject* active = nullptr;   // 主动撞的豹豹
                 BaoBaoObject* passive = nullptr;  // 被撞的豹豹
@@ -639,10 +696,16 @@ void GameWidget::handleCollisions()
             }
             if(baoA.hp<1)
             {
+                if (i < 3) m_redDeaths++; else m_blueDeaths++;
+                if (m_redDeaths >= 6) { emit goToResultWidget(false); return; }
+                if (m_blueDeaths >= 6) { emit goToResultWidget(true); return; }
                 GameWidget::resetBaoBaoState(i);
             }
             if(baoB.hp<1)
             {
+                if (j < 3) m_redDeaths++; else m_blueDeaths++;
+                if (m_redDeaths >= 6) { emit goToResultWidget(false); return; }
+                if (m_blueDeaths >= 6) { emit goToResultWidget(true); return; }
                 GameWidget::resetBaoBaoState(j);
             }
         }
@@ -699,11 +762,11 @@ void GameWidget::paintEvent(QPaintEvent *event)
     for (int i = 0; i < 6; i++) {
         if (i < 3) {
             QPen pen(Qt::red);
-            pen.setWidth(4);
+            pen.setWidth(8);
             painter.setPen(pen);
         } else {
             QPen pen(QColor(30, 144, 255));
-            pen.setWidth(5);
+            pen.setWidth(10);
             painter.setPen(pen);
         }
 
@@ -815,7 +878,7 @@ QVector<QPointF> GameWidget::calculateReflectionPath(const QPointF& start, const
     QPointF currentPos = start + direction * (radius + 1.0);
     QPointF currentDir = direction;
     qreal remainingLength = maxLength;
-    int maxReflections = 5;  // 最多反射5次，防止无限循环
+    int maxReflections = 2;  // 仅反弹一次（初始段+一段反射）
 
     for (int reflection = 0; reflection < maxReflections && remainingLength > 0; ++reflection) {
         qreal minT = remainingLength;
@@ -865,13 +928,13 @@ QVector<QPointF> GameWidget::calculateReflectionPath(const QPointF& start, const
             QPointF normal;
 
             if (qAbs(hitPoint.x() - boundRect.left()) < 1.0) {
-                normal = QPointF(-1, 0);  // 左边界法线
+                normal = QPointF(-1, 0);
             } else if (qAbs(hitPoint.x() - boundRect.right()) < 1.0) {
-                normal = QPointF(1, 0);   // 右边界法线
+                normal = QPointF(1, 0);
             } else if (qAbs(hitPoint.y() - boundRect.top()) < 1.0) {
-                normal = QPointF(0, -1);  // 上边界法线
+                normal = QPointF(0, -1);
             } else if (qAbs(hitPoint.y() - boundRect.bottom()) < 1.0) {
-                normal = QPointF(0, 1);   // 下边界法线
+                normal = QPointF(0, 1);
             }
 
             // 反射公式: R = V - 2*(V·N)*N
@@ -883,18 +946,21 @@ QVector<QPointF> GameWidget::calculateReflectionPath(const QPointF& start, const
             if (len > 0.001) {
                 currentDir /= len;
             }
+            remainingLength *= 0.8;
         }
         else if (hitType == 1) {
             // 豹豹反射（弹性碰撞）
             QPointF normal = (hitPoint - m_baobaos[hitIndex].center);
             qreal normLen = std::hypot(normal.x(), normal.y());
             if (normLen > 0.001) {
-                normal /= normLen;  // 归一化
+                normal /= normLen;
             }
 
             // 反射公式: R = V - 2*(V·N)*N
             qreal dot = currentDir.x() * normal.x() + currentDir.y() * normal.y();
             currentDir = currentDir - normal * (2 * dot);
+
+            remainingLength *= 0.9;
         }
 
         // 从碰撞点稍微偏移，避免卡在碰撞点上
@@ -926,25 +992,11 @@ void GameWidget::resetBaoBaoState(int index)
     bao.justCollided = false;
     bao.collisionCount = 0;
     bao.decorationRotation = 0;
-    // 重置血量和攻击力（根据豹豹类型设置）
-    // 这里需要根据你的实际配置来设置
-    switch(index) {
-    case 0:  // 天使海豹（左）
-    case 3:  // 天使海豹（右）
-        bao.hp = 45;
-        bao.atk = 5;
-        break;
-    case 1:  // 橡胶海豹（左）
-    case 4:  // 橡胶海豹（右）
-        bao.hp = 45;
-        bao.atk = 5;
-        break;
-    case 2:  // 大力海豹（左）
-    case 5:  // 大力海豹（右）
-        bao.hp = 45;
-        bao.atk = 5;
-        break;
-    }
+    bao.bengdaiBuffed = false;
+    // 根据豹豹类型重置血量和攻击力
+    BaoBaoStats stats = getBaoBaoStats(bao.type);
+    bao.hp = stats.hp;
+    bao.atk = stats.atk;
 
     // 更新碰撞箱位置
     bao.collisionRect.moveCenter(bao.center.toPoint());
@@ -1084,12 +1136,28 @@ void GameWidget::drawRotatingDecoration(QPainter& painter, BaoBaoObject& bao) {
 }
 
 void GameWidget::setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<BaoBaoType>& p2Types) {
+    // 重置所有豹豹到默认位置
+    QPointF defaultPositions[6] = {
+        QPointF(300, 450),
+        QPointF(500, 450),
+        QPointF(700, 450),
+        QPointF(900, 450),
+        QPointF(1100, 450),
+        QPointF(1300, 450)
+    };
+    
     for (int i = 0; i < 3; i++) {
         if (i < p1Types.size() && i < m_baobaos.size()) {
             m_baobaos[i].type = p1Types[i];
             BaoBaoStats stats = getBaoBaoStats(p1Types[i]);
             m_baobaos[i].hp = stats.hp;
             m_baobaos[i].atk = stats.atk;
+            m_baobaos[i].bengdaiBuffed = false;
+            m_baobaos[i].center = defaultPositions[i];
+            m_baobaos[i].velocityF = QPointF(0, 0);
+            m_baobaos[i].remainingDistance = 0;
+            m_baobaos[i].isMoving = false;
+            m_baobaos[i].hasActed = false;
             
             QString imagePath = getBaoBaoImagePath(p1Types[i]);
             QPixmap originalPixmap(imagePath);
@@ -1114,6 +1182,12 @@ void GameWidget::setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<
             BaoBaoStats stats = getBaoBaoStats(p2Types[i]);
             m_baobaos[i + 3].hp = stats.hp;
             m_baobaos[i + 3].atk = stats.atk;
+            m_baobaos[i + 3].bengdaiBuffed = false;
+            m_baobaos[i + 3].center = defaultPositions[i + 3];
+            m_baobaos[i + 3].velocityF = QPointF(0, 0);
+            m_baobaos[i + 3].remainingDistance = 0;
+            m_baobaos[i + 3].isMoving = false;
+            m_baobaos[i + 3].hasActed = false;
             
             QString imagePath = getBaoBaoImagePath(p2Types[i]);
             QPixmap originalPixmap(imagePath);
@@ -1141,6 +1215,110 @@ void GameWidget::setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<
         if (bao.atkLabel) {
             bao.atkLabel->setText(QString("攻击力: %1").arg(bao.atk));
             bao.atkLabel->adjustSize();
+        }
+        // 更新碰撞箱和标签位置
+        bao.collisionRect.moveCenter(bao.center.toPoint());
+        if (bao.label) {
+            bao.label->move(bao.collisionRect.x(), bao.collisionRect.y());
+        }
+        if (bao.hpLabel) {
+            bao.hpLabel->move(bao.collisionRect.x() + 10, bao.collisionRect.y() + 85);
+        }
+        if (bao.atkLabel) {
+            bao.atkLabel->move(bao.collisionRect.x() + 10, bao.collisionRect.y() + 110);
+        }
+    }
+    m_redDeaths = 0;
+    m_blueDeaths = 0;
+    order = true;
+    m_p1Types = p1Types;
+    m_p2Types = p2Types;
+}
+
+void GameWidget::resetGame()
+{
+    m_redDeaths = 0;
+    m_blueDeaths = 0;
+    order = true;
+
+    for (int i = 0; i < 3 && i < m_p1Types.size(); i++) {
+        m_baobaos[i].type = m_p1Types[i];
+        BaoBaoStats stats = getBaoBaoStats(m_p1Types[i]);
+        m_baobaos[i].hp = stats.hp;
+        m_baobaos[i].atk = stats.atk;
+    }
+    for (int i = 0; i < 3 && i < m_p2Types.size(); i++) {
+        m_baobaos[i + 3].type = m_p2Types[i];
+        BaoBaoStats stats = getBaoBaoStats(m_p2Types[i]);
+        m_baobaos[i + 3].hp = stats.hp;
+        m_baobaos[i + 3].atk = stats.atk;
+    }
+
+    for (int i = 0; i < 6; i++) {
+        switch (i) {
+        case 0: m_baobaos[i].center = QPointF(300, 450); break;
+        case 1: m_baobaos[i].center = QPointF(500, 450); break;
+        case 2: m_baobaos[i].center = QPointF(700, 450); break;
+        case 3: m_baobaos[i].center = QPointF(900, 450); break;
+        case 4: m_baobaos[i].center = QPointF(1100, 450); break;
+        case 5: m_baobaos[i].center = QPointF(1300, 450); break;
+        }
+        m_baobaos[i].velocityF = QPointF(0, 0);
+        m_baobaos[i].remainingDistance = 0;
+        m_baobaos[i].isMoving = false;
+        m_baobaos[i].hasActed = false;
+        m_baobaos[i].justCollided = false;
+        m_baobaos[i].collisionCount = 0;
+        m_baobaos[i].decorationRotation = 0;
+        m_baobaos[i].bengdaiBuffed = false;
+        m_baobaos[i].camp = (i < 3);
+
+        m_baobaos[i].collisionRect.moveCenter(m_baobaos[i].center.toPoint());
+        if (m_baobaos[i].label) {
+            m_baobaos[i].label->move(m_baobaos[i].collisionRect.x(), m_baobaos[i].collisionRect.y());
+        }
+        if (m_baobaos[i].hpLabel) {
+            m_baobaos[i].hpLabel->setText(QString("%1").arg(m_baobaos[i].hp));
+            m_baobaos[i].hpLabel->adjustSize();
+            m_baobaos[i].hpLabel->move(m_baobaos[i].collisionRect.x() + 10, m_baobaos[i].collisionRect.y() + 85);
+        }
+        if (m_baobaos[i].atkLabel) {
+            m_baobaos[i].atkLabel->setText(QString("攻击力: %1").arg(m_baobaos[i].atk));
+            m_baobaos[i].atkLabel->adjustSize();
+            m_baobaos[i].atkLabel->move(m_baobaos[i].collisionRect.x() + 10, m_baobaos[i].collisionRect.y() + 110);
+        }
+    }
+
+    for (int i = 0; i < 3 && i < m_p1Types.size(); i++) {
+        QString imagePath = getBaoBaoImagePath(m_p1Types[i]);
+        QPixmap originalPixmap(imagePath);
+        QPixmap circlePixmap(80, 80);
+        circlePixmap.fill(Qt::transparent);
+        QPainter painter(&circlePixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        QPainterPath path;
+        path.addEllipse(0, 0, 80, 80);
+        painter.setClipPath(path);
+        painter.drawPixmap(0, 0, 80, 80, originalPixmap);
+        painter.end();
+        if (m_baobaos[i].label) {
+            m_baobaos[i].label->setPixmap(circlePixmap);
+        }
+    }
+    for (int i = 0; i < 3 && i < m_p2Types.size(); i++) {
+        QString imagePath = getBaoBaoImagePath(m_p2Types[i]);
+        QPixmap originalPixmap(imagePath);
+        QPixmap circlePixmap(80, 80);
+        circlePixmap.fill(Qt::transparent);
+        QPainter painter(&circlePixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        QPainterPath path;
+        path.addEllipse(0, 0, 80, 80);
+        painter.setClipPath(path);
+        painter.drawPixmap(0, 0, 80, 80, originalPixmap);
+        painter.end();
+        if (m_baobaos[i + 3].label) {
+            m_baobaos[i + 3].label->setPixmap(circlePixmap);
         }
     }
 }

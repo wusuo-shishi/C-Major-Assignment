@@ -8,5 +8,11 @@
         <file>images/tianshi_baobao.jpg</file>
         <file>images/xiangjiao_baobao.jpg</file>
         <file>images/dali_baobao.jpg</file>
+        <file>images/select_hongwen.jpg</file>
+        <file>images/select_bengdai.jpg</file>
+        <file>images/select_pengpeng.jpg</file>
+        <file>images/hongwen_baobao.jpg</file>
+        <file>images/bengdai_baobao.jpg</file>
+        <file>images/pengpeng_baobao.jpg</file>
     </qresource>
 </RCC>

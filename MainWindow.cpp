@@ -33,8 +33,17 @@ MainWindow::MainWindow(QWidget *parent)
             stack->setCurrentIndex(2);
         });
     connect(selectPage, &SelectWidget::goToStartWidget, [stack](){stack->setCurrentIndex(0);});
-    connect(gamePage, &GameWidget::goToResultWidget, [stack](){stack->setCurrentIndex(3);});
-    connect(resultPage, &ResultWidget::goToStartWidget, [stack](){stack->setCurrentIndex(0);});
+    connect(gamePage, &GameWidget::goToResultWidget, [this, stack](bool redWins){
+        resultPage->setWinnerText(redWins);
+        stack->setCurrentIndex(3);
+    });
+    connect(resultPage, &ResultWidget::goToGameWidget, [this, stack](){
+        gamePage->resetGame();
+        stack->setCurrentIndex(2);
+    });
+    connect(resultPage, &ResultWidget::goToSelectWidget, [stack](){
+        stack->setCurrentIndex(1);
+    });
 }
 
 // //跳转实现

@@ -25,6 +25,7 @@ public:
     qreal remainingDistance; // 剩余行动距离（浮点）
     bool isMoving = false;   // 是否正在移动
     bool hasActed = false;   // 是否已经行动过
+    bool bengdaiBuffed = false;  // 绷带海豹是否已获得buff
     int hp;
     int atk;
     bool camp;               //阵营
@@ -45,6 +46,7 @@ public:
         }
     }
     void setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<BaoBaoType>& p2Types);
+    void resetGame();
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;    // 鼠标按下
@@ -73,6 +75,10 @@ private:
     bool hasrun = false;
     BaoBaoObject bao[6];
     bool order = true;               //出手顺序，ture时左方行动，false时右方行动
+    int m_redDeaths = 0;             //红色方累计死亡数
+    int m_blueDeaths = 0;            //蓝色方累计死亡数
+    QList<BaoBaoType> m_p1Types;     //保存1P选择的类型
+    QList<BaoBaoType> m_p2Types;     //保存2P选择的类型
     bool m_isDragging = false;        // 是否正在拖动
     int m_draggedIndex = -1;          // 正在拖动第几个豹豹
     QPointF m_dragStartPos;           // 拖动开始位置（浮点）
@@ -90,7 +96,7 @@ private:
     void drawRotatingDecoration(QPainter& painter, BaoBaoObject& bao);  // 绘制旋转装饰
 
 signals:
-    void goToResultWidget();
+    void goToResultWidget(bool redWins);
 
 
 };
