@@ -44,6 +44,14 @@ public:
             delete bao.hpLabel;
             delete bao.atkLabel;
         }
+        for (int i = 0; i < 3; i++) {
+            delete m_touxiangLabels[i];
+            delete m_touxiangLabels2[i];
+        }
+        for (int i = 0; i < 6; i++) {
+            delete m_slLabels[i];
+            delete m_srLabels[i];
+        }
     }
     void setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<BaoBaoType>& p2Types);
     void resetGame();
@@ -85,15 +93,39 @@ private:
     QPointF m_currentMousePos;        // 当前鼠标位置（浮点）
     QPointF m_rawDragVector;          // 【新增】存储原始拖拽向量（不受maxDrag限制）
 
-    // 中心矩形
-    QRect m_centerRect;
+    // 碰撞区域（梯形，顺时针四个顶点）
+    QPointF m_boundaryVerts[4];        // 0=左上 1=右上 2=右下 3=左下
+
+    // 射线与线段交点检测
+    bool intersectWithSegment(const QPointF& rayStart, const QPointF& rayDir, const QPointF& segA, const QPointF& segB, qreal& t);
 
     // 是否有豹豹正在移动
     bool m_hasMovingBaoBao = false;
 
+    QPixmap m_bgPixmap;               // 背景图
+
     void initBaobaos();               // 初始化6个豹豹
+    void initTouxiang();              // 预裁剪头像并创建标签
     void updatePhysics();             // 更新物理（移动+碰撞）
+    void refreshBaoBaoLabels(int index);  // 刷新指定豹豹的标签位置和颜色
     void drawRotatingDecoration(QPainter& painter, BaoBaoObject& bao);  // 绘制旋转装饰
+    int getTouxiangIndex(BaoBaoType type);  // 获取类型对应的头像索引
+
+    QLabel *m_touxiangLabels[3];      // L1 L2 L3 头像标签 (1P)
+    QLabel *m_touxiangLabels2[3];     // L4 L5 L6 头像标签 (2P)
+    QPixmap m_touxiangPixmaps[6];     // 1P: 0=xiangjiao 1=tianshi 2=dali 3=hongwen 4=bengdai 5=pengpeng
+    QPixmap m_touxiangPixmaps2[6];    // 2P: 同上，使用Y区域裁剪
+
+    // SL得分标签（蓝色方每击败红色方一个豹豹，依次显现SL1~SL6）
+    QLabel *m_slLabels[6];            // SL1 ~ SL6 得分标签
+    QPixmap m_slPixmap;               // SL标签的裁剪图像
+    void initSlLabels();              // 初始化SL得分标签
+    void updateSlLabels();            // 根据红色方死亡数更新SL标签显示
+
+    // SR得分标签（红色方每击败蓝色方一个豹豹，依次显现SR1~SR6，与SL关于中轴线对称）
+    QLabel *m_srLabels[6];            // SR1 ~ SR6 得分标签
+    QPixmap m_srPixmap;               // SR标签的裁剪图像（从原图对称位置提取）
+    void updateSrLabels();            // 根据蓝色方死亡数更新SR标签显示
 
 signals:
     void goToResultWidget(bool redWins);

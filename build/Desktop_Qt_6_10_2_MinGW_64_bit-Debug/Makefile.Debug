@@ -142,6 +142,7 @@ debug/qrc_res.cpp: ../../res.qrc \
 		../../images/select\ dali.jpg \
 		../../images/fanhuijian.png \
 		../../images/select\ xiangjiao.jpg \
+		../../images/defen.jpeg \
 		../../images/select_pengpeng.jpg \
 		../../images/pengpeng_baobao.jpg \
 		../../images/select_bengdai.jpg \
@@ -149,6 +150,8 @@ debug/qrc_res.cpp: ../../res.qrc \
 		../../images/hongwen_baobao.jpg \
 		../../images/start_page.jpg \
 		../../images/dali_baobao.jpg \
+		../../images/baobao_touxiang.jpeg \
+		../../images/game_background.jpeg \
 		../../images/select_hongwen.jpg
 	C:\Qt\6.10.2\mingw_64\bin\rcc.exe -name res --no-zstd ..\..\res.qrc -o debug\qrc_res.cpp
 
@@ -1945,7 +1948,8 @@ debug/GameWidget.o: ../../GameWidget.cpp ../../GameWidget.h \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QDebug \
 		C:/Qt/6.10.2/mingw_64/include/QtCore/QTimerEvent \
 		C:/Qt/6.10.2/mingw_64/include/QtGui/QPainterPath \
-		C:/Qt/6.10.2/mingw_64/include/QtGui/qpainterpath.h
+		C:/Qt/6.10.2/mingw_64/include/QtGui/qpainterpath.h \
+		C:/Qt/6.10.2/mingw_64/include/QtGui/QPolygonF
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o debug\GameWidget.o ..\..\GameWidget.cpp
 
 debug/ResultWidget.o: ../../ResultWidget.cpp ../../ResultWidget.h \

@@ -14,5 +14,8 @@
         <file>images/hongwen_baobao.jpg</file>
         <file>images/bengdai_baobao.jpg</file>
         <file>images/pengpeng_baobao.jpg</file>
+        <file>images/game_background.jpeg</file>
+        <file>images/baobao_touxiang.jpeg</file>
+        <file>images/defen.jpeg</file>
     </qresource>
 </RCC>

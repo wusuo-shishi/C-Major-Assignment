@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QTimerEvent>
 #include <QPainterPath>
+#include <QPolygonF>
 #include <cmath>
 
 struct BaoBaoStats {
@@ -53,17 +54,29 @@ GameWidget::GameWidget(QWidget *parent)
 {
     setMouseTracking(true);  // 开启鼠标跟踪，才能接收move事件
 
+    m_bgPixmap = QPixmap("D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\game_background.jpeg");
+    m_bgPixmap = m_bgPixmap.scaled(1600, 900, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
     QLabel *label = new QLabel("游戏界面", this);
     label->setAlignment(Qt::AlignCenter);
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->addWidget(label);
 
-    // 初始化中心矩形（面积）
-    m_centerRect = QRect(160, 100, 1200, 700);
+    // 初始化梯形碰撞区域（顺时针四个顶点）
+    m_boundaryVerts[0] = QPointF(24.48 / 100.0 * 1600, 20.65 / 100.0 * 900);   // 左上角
+    m_boundaryVerts[1] = QPointF(74.95 / 100.0 * 1600, 21.57 / 100.0 * 900);   // 右上角
+    m_boundaryVerts[2] = QPointF(81.72 / 100.0 * 1600, 86.11 / 100.0 * 900);   // 右下角
+    m_boundaryVerts[3] = QPointF(17.97 / 100.0 * 1600, 85.83 / 100.0 * 900);   // 左下角
 
 
     // 初始化6个豹豹
     initBaobaos();
+
+    // 预裁剪头像并创建标签
+    initTouxiang();
+
+    // 初始化SL得分标签
+    initSlLabels();
 
     // 启动物理定时器（每16ms约60fps）
     startTimer(16);
@@ -90,70 +103,218 @@ void GameWidget::initBaobaos()
         if(i>2)bao[i].camp = !order;
 
 
-        // 位置：横向排列（使用浮点）
-        bao[i].center = QPointF(300 + i * 200, 450);
-        bao[i].collisionRect = QRect(qRound(bao[i].center.x() - 40), qRound(bao[i].center.y() - 40), 80, 80);
+        // 位置：百分比坐标
+        QPointF defaultPositions[6] = {
+            QPointF(70.99 / 100.0 * 1600, 32.96 / 100.0 * 900),   // 豹豹1
+            QPointF(66.56 / 100.0 * 1600, 48.33 / 100.0 * 900),   // 豹豹2
+            QPointF(73.44 / 100.0 * 1600, 65.28 / 100.0 * 900),   // 豹豹3
+            QPointF(29.64 / 100.0 * 1600, 33.15 / 100.0 * 900),   // 豹豹4
+            QPointF(34.22 / 100.0 * 1600, 48.15 / 100.0 * 900),   // 豹豹5
+            QPointF(27.03 / 100.0 * 1600, 65.28 / 100.0 * 900),   // 豹豹6
+        };
+        bao[i].center = defaultPositions[i];
+        bao[i].collisionRect = QRect(qRound(bao[i].center.x() - 30), qRound(bao[i].center.y() - 30), 60, 60);
         bao[i].velocityF = QPointF(0, 0);
         bao[i].decorationRotation = 0;
         bao[i].remainingDistance = 0;
 
         // 创建圆形图片
-        QPixmap circlePixmap(80, 80);
+        QPixmap circlePixmap(60, 60);
         circlePixmap.fill(Qt::transparent);
         QPainter painter(&circlePixmap);
         painter.setRenderHint(QPainter::Antialiasing);
         QPainterPath path;
-        path.addEllipse(0, 0, 80, 80);
+        path.addEllipse(0, 0, 60, 60);
         painter.setClipPath(path);
-        painter.drawPixmap(0, 0, 80, 80, originalPixmap);
+        painter.drawPixmap(0, 0, 60, 60, originalPixmap);
         painter.end();
 
         // 创建标签
         // ========== 血量显示标签 ==========
         bao[i].hpLabel = new QLabel(this);
         bao[i].hpLabel->setAlignment(Qt::AlignCenter);
-        bao[i].hpLabel->setStyleSheet(
-            "QLabel {"
-            "   color: white;"
-            "   font-size: 14px;"
-            "   font-weight: bold;"
-            "   background-color: rgba(0, 0, 0, 150);"
-            "   border-radius: 10px;"
-            "   padding: 2px 5px;"
-            "}"
-            );
-        bao[i].hpLabel->setText(QString("%1").arg(bao[i].hp));
-        bao[i].hpLabel->adjustSize();
-        bao[i].hpLabel->move(bao[i].collisionRect.x() + 10, bao[i].collisionRect.y() + 85);
         bao[i].hpLabel->show();
 
         // ========== 攻击力显示标签 ==========
         bao[i].atkLabel = new QLabel(this);
         bao[i].atkLabel->setAlignment(Qt::AlignCenter);
-        bao[i].atkLabel->setStyleSheet(
-            "QLabel {"
-            "   color: #FF6B6B;"
-            "   font-size: 12px;"
-            "   font-weight: bold;"
-            "   background-color: rgba(0, 0, 0, 150);"
-            "   border-radius: 8px;"
-            "   padding: 2px 5px;"
-            "}"
-            );
-        bao[i].atkLabel->setText(QString("攻击力: %1").arg(bao[i].atk));
-        bao[i].atkLabel->adjustSize();
-        bao[i].atkLabel->move(bao[i].collisionRect.x() + 10, bao[i].collisionRect.y() + 110);
         bao[i].atkLabel->show();
 
         //贴图显示标签
         bao[i].label = new QLabel(this);
         bao[i].label->setPixmap(circlePixmap);
-        bao[i].label->setFixedSize(80, 80);
+        bao[i].label->setFixedSize(60, 60);
         bao[i].label->move(bao[i].collisionRect.x(), bao[i].collisionRect.y());
         bao[i].label->setAttribute(Qt::WA_TranslucentBackground);
         bao[i].label->show();
 
         m_baobaos.append(bao[i]);
+        refreshBaoBaoLabels(i);
+    }
+}
+
+void GameWidget::initTouxiang()
+{
+    qreal ax = 23.80 / 100.0 * 1600;
+    qreal ay = 7.59 / 100.0 * 900;
+    qreal dx = 30.21 / 100.0 * 1600;
+    qreal dy = 16.76 / 100.0 * 900;
+    qreal bx = 30.57 / 100.0 * 1600;
+    qreal X = bx - ax;
+    int xi = qRound(X);
+    qreal tw = dx - ax;
+    qreal th = dy - ay;
+    int txi = qRound(ax);
+    int tyi = qRound(ay);
+    int twi = qRound(tw);
+    int thi = qRound(th);
+
+    qreal ex = 62.50 / 100.0 * 1600;
+    qreal ey = 7.31 / 100.0 * 900;
+    qreal fx = 55.89 / 100.0 * 1600;
+    qreal fy = 16.57 / 100.0 * 900;
+    qreal yLeft = qMin(ex, fx);
+    qreal yTop = qMin(ey, fy);
+    qreal yw = qAbs(ex - fx);
+    qreal yh = qAbs(ey - fy);
+    int yxi = qRound(yLeft);
+    int yyi = qRound(yTop);
+    int ywi = qRound(yw);
+    int yhi = qRound(yh);
+
+    QPixmap baoFull("D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\baobao_touxiang.jpeg");
+    baoFull = baoFull.scaled(1600, 900, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    QPixmap bgFull("D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\game_background.jpeg");
+    bgFull = bgFull.scaled(1600, 900, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+    m_touxiangPixmaps[0] = baoFull.copy(txi, tyi, twi, thi);
+    m_touxiangPixmaps[1] = baoFull.copy(txi + xi, tyi, twi, thi);
+    m_touxiangPixmaps[2] = baoFull.copy(txi + 2 * xi, tyi, twi, thi);
+    m_touxiangPixmaps[3] = bgFull.copy(txi, tyi, twi, thi);
+    m_touxiangPixmaps[4] = bgFull.copy(txi + xi, tyi, twi, thi);
+    m_touxiangPixmaps[5] = bgFull.copy(txi + 2 * xi, tyi, twi, thi);
+
+    m_touxiangPixmaps2[0] = baoFull.copy(yxi, yyi, ywi, yhi);
+    m_touxiangPixmaps2[1] = baoFull.copy(yxi + xi, yyi, ywi, yhi);
+    m_touxiangPixmaps2[2] = baoFull.copy(yxi + 2 * xi, yyi, ywi, yhi);
+    m_touxiangPixmaps2[3] = bgFull.copy(yxi, yyi, ywi, yhi);
+    m_touxiangPixmaps2[4] = bgFull.copy(yxi + xi, yyi, ywi, yhi);
+    m_touxiangPixmaps2[5] = bgFull.copy(yxi + 2 * xi, yyi, ywi, yhi);
+
+    for (int i = 0; i < 3; i++) {
+        m_touxiangLabels[i] = new QLabel(this);
+        m_touxiangLabels[i]->setFixedSize(xi, thi);
+        m_touxiangLabels[i]->move(txi + i * xi, tyi);
+        m_touxiangLabels[i]->setScaledContents(true);
+        m_touxiangLabels[i]->setStyleSheet("QLabel { border: none; background: transparent; }");
+
+        m_touxiangLabels2[i] = new QLabel(this);
+        m_touxiangLabels2[i]->setFixedSize(xi, yhi);
+        m_touxiangLabels2[i]->move(yxi + i * xi, yyi);
+        m_touxiangLabels2[i]->setScaledContents(true);
+        m_touxiangLabels2[i]->setStyleSheet("QLabel { border: none; background: transparent; }");
+    }
+}
+
+// 初始化SL得分标签
+void GameWidget::initSlLabels()
+{
+    // 加载得分图并缩放至游戏界面尺寸
+    QPixmap defenFull("D:\\MyCode\\QtCreator\\First_Major_Assignment\\images\\defen.jpeg");
+    defenFull = defenFull.scaled(1600, 900, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+    // A点(28.96%, 5.19%)和G点(30.78%, 1.94%)为对顶角，矩形四边水平或竖直
+    qreal ax = 28.96 / 100.0 * 1600;
+    qreal ay = 5.19 / 100.0 * 900;
+    qreal gx = 30.78 / 100.0 * 1600;
+    qreal gy = 1.94 / 100.0 * 900;
+
+    qreal slX = qMin(ax, gx);
+    qreal slY = qMin(ay, gy);
+    qreal slW = qAbs(gx - ax);
+    qreal slH = qAbs(gy - ay);
+
+    int slXi = qRound(slX);   // 463
+    int slYi = qRound(slY);   // 17
+    int slWi = qRound(slW);   // 29
+    int slHi = qRound(slH);   // 29
+
+    // 裁剪SL标签图像
+    m_slPixmap = defenFull.copy(slXi, slYi, slWi, slHi);
+
+    // 计算ABCDEF相邻点平均距离R
+    // A:28.96 B:31.04 C:33.23 D:35.31 E:37.34 F:39.43 (百分比坐标)
+    qreal distAB = std::hypot(31.04 - 28.96, 5.19 - 5.19);
+    qreal distBC = std::hypot(33.23 - 31.04, 5.00 - 5.19);
+    qreal distCD = std::hypot(35.31 - 33.23, 5.00 - 5.00);
+    qreal distDE = std::hypot(37.34 - 35.31, 5.28 - 5.00);
+    qreal distEF = std::hypot(39.43 - 37.34, 5.28 - 5.28);
+    qreal R_percent = (distAB + distBC + distCD + distDE + distEF) / 5.0;  // 约2.0995%
+    qreal R_px = R_percent / 100.0 * 1600;  // 约33.59px
+
+    // 创建SL1~SL6标签，水平依次间隔R_px（左侧，从左往右排列）
+    for (int i = 0; i < 6; i++) {
+        m_slLabels[i] = new QLabel(this);
+        m_slLabels[i]->setPixmap(m_slPixmap);
+        m_slLabels[i]->setFixedSize(slWi, slHi);
+        m_slLabels[i]->setScaledContents(true);
+        m_slLabels[i]->move(qRound(slX + i * R_px), slYi);
+        m_slLabels[i]->setStyleSheet("QLabel { border: none; background: transparent; }");
+        m_slLabels[i]->hide();  // 初始全部隐藏
+    }
+
+    // 裁剪SR标签图像：从原图中轴线对称位置提取
+    int srXi = 1600 - slXi - slWi;  // 关于x=800对称
+    m_srPixmap = defenFull.copy(srXi, slYi, slWi, slHi);
+
+    // 创建SR1~SR6标签，与SL关于中轴线(x=800)对称（右侧，从右往左排列）
+    // SR[i]的x = 1600 - slX - slWi - i*R_px，使得SL[i]和SR[i]互为镜像
+    qreal srBaseX = 1600 - slX - slWi;
+    for (int i = 0; i < 6; i++) {
+        m_srLabels[i] = new QLabel(this);
+        m_srLabels[i]->setPixmap(m_srPixmap);
+        m_srLabels[i]->setFixedSize(slWi, slHi);
+        m_srLabels[i]->setScaledContents(true);
+        m_srLabels[i]->move(qRound(srBaseX - i * R_px), slYi);
+        m_srLabels[i]->setStyleSheet("QLabel { border: none; background: transparent; }");
+        m_srLabels[i]->hide();  // 初始全部隐藏
+    }
+}
+
+// 根据红色方死亡数更新SL标签显示
+void GameWidget::updateSlLabels()
+{
+    for (int i = 0; i < 6; i++) {
+        if (i < m_redDeaths) {
+            m_slLabels[i]->show();
+        } else {
+            m_slLabels[i]->hide();
+        }
+    }
+}
+
+// 根据蓝色方死亡数更新SR标签显示
+void GameWidget::updateSrLabels()
+{
+    for (int i = 0; i < 6; i++) {
+        if (i < m_blueDeaths) {
+            m_srLabels[i]->show();
+        } else {
+            m_srLabels[i]->hide();
+        }
+    }
+}
+
+int GameWidget::getTouxiangIndex(BaoBaoType type)
+{
+    switch (type) {
+    case BaoBaoType::Xiangjiao: return 0;
+    case BaoBaoType::Tianshi:   return 1;
+    case BaoBaoType::Dali:      return 2;
+    case BaoBaoType::Hongwen:   return 3;
+    case BaoBaoType::Bengdai:   return 4;
+    case BaoBaoType::Pengpeng:  return 5;
+    default:                    return -1;
     }
 }
 
@@ -172,7 +333,7 @@ void GameWidget::mousePressEvent(QMouseEvent *event)
         // 如果距离小于半径，说明点中了
         bool isCurrentTurn = (order && i < 3) || (!order && i > 2);
         if (!isCurrentTurn) continue;
-        if (distSq <= 40 * 40) {
+        if (distSq <= 30 * 30) {
             if (m_baobaos[i].isMoving) {
                 return;
             }
@@ -330,34 +491,36 @@ void GameWidget::updatePhysics()
         bao.center += bao.velocityF;
         bao.remainingDistance -= moveDistance;
 
-        // 边界碰撞检测
-        int radius = 40;
-        qreal left = m_centerRect.left() + radius;
-        qreal right = m_centerRect.right() - radius;
-        qreal top = m_centerRect.top() + radius;
-        qreal bottom = m_centerRect.bottom() - radius;
+        // 梯形边界碰撞检测
+        int radius = 30;
         bool bounced = false;
 
-        // 左/右边界
-        if (bao.center.x() < left) {
-            bao.center.setX(left);
-            bao.velocityF.setX(-bao.velocityF.x());
-            bounced = true;
-        } else if (bao.center.x() > right) {
-            bao.center.setX(right);
-            bao.velocityF.setX(-bao.velocityF.x());
-            bounced = true;
-        }
+        for (int e = 0; e < 4; e++) {
+            QPointF v0 = m_boundaryVerts[e];
+            QPointF v1 = m_boundaryVerts[(e + 1) % 4];
+            QPointF edgeDir = v1 - v0;
+            qreal edgeLenSq = QPointF::dotProduct(edgeDir, edgeDir);
+            if (edgeLenSq < 0.001) continue;
 
-        // 上/下边界
-        if (bao.center.y() < top) {
-            bao.center.setY(top);
-            bao.velocityF.setY(-bao.velocityF.y());
-            bounced = true;
-        } else if (bao.center.y() > bottom) {
-            bao.center.setY(bottom);
-            bao.velocityF.setY(-bao.velocityF.y());
-            bounced = true;
+            qreal t = QPointF::dotProduct(bao.center - v0, edgeDir) / edgeLenSq;
+            QPointF closest;
+            if (t <= 0) closest = v0;
+            else if (t >= 1) closest = v1;
+            else closest = v0 + edgeDir * t;
+
+            QPointF delta = bao.center - closest;
+            qreal dist = std::hypot(delta.x(), delta.y());
+
+            if (dist < radius && dist > 0.001) {
+                QPointF normal = delta / dist;
+                bao.center = closest + normal * radius;
+
+                qreal vn = QPointF::dotProduct(bao.velocityF, normal);
+                if (vn < 0) {
+                    bao.velocityF = bao.velocityF - normal * (2 * vn);
+                }
+                bounced = true;
+            }
         }
 
         // 碰撞后损耗（可以调整系数）
@@ -406,10 +569,8 @@ void GameWidget::updatePhysics()
 
                 for (int i = 0; i < 6; i++) {
                     m_baobaos[i].atk = getBaoBaoStats(m_baobaos[i].type).atk;
-                    if (m_baobaos[i].atkLabel) {
-                        m_baobaos[i].atkLabel->setText(QString("攻击力: %1").arg(m_baobaos[i].atk));
-                        m_baobaos[i].atkLabel->adjustSize();
-                    }
+                    if (m_baobaos[i].type == BaoBaoType::Bengdai) m_baobaos[i].bengdaiBuffed = false;
+                    refreshBaoBaoLabels(i);
                 }
             } else {
                 order = !order;
@@ -437,19 +598,8 @@ void GameWidget::updatePhysics()
         bao.collisionRect.moveCenter(bao.center.toPoint());
         bao.label->move(bao.collisionRect.x(), bao.collisionRect.y());
 
-        // 更新血量标签位置
-        if (bao.hpLabel) {
-            bao.hpLabel->move(bao.collisionRect.x() + 10, bao.collisionRect.y() + 85);
-            // 实时更新血量显示
-            bao.hpLabel->setText(QString("%1").arg(bao.hp));
-            bao.hpLabel->adjustSize();
-        }
-
-        // 更新攻击力标签位置
-        if (bao.atkLabel) {
-            bao.atkLabel->move(bao.collisionRect.x() + 10, bao.collisionRect.y() + 110);
-            bao.atkLabel->adjustSize();
-        }
+        // 刷新标签位置和颜色
+        refreshBaoBaoLabels(i);
     }
     // 更新是否有豹豹移动的状态
     m_hasMovingBaoBao = hasMovingBaoBao;
@@ -473,7 +623,7 @@ void GameWidget::handleCollisions()
             // 计算两个圆心之间的距离
             QPointF delta = baoA.center - baoB.center;
             qreal distance = std::sqrt(delta.x() * delta.x() + delta.y() * delta.y());
-            qreal minDistance = 80.0;  // 半径之和 (40 + 40)
+            qreal minDistance = 60.0;  // 半径之和 (30 + 30)
 
             // 发生碰撞
             if (distance < minDistance) {
@@ -511,11 +661,12 @@ void GameWidget::handleCollisions()
                     baoB.center -= correction;
                 }
 
-                if(baoA.camp == true && baoB.camp == false)
+                // 伤害判定：只有移动方（主动碰撞方）才能造成伤害，避免静止重叠反复扣血
+                if(baoA.camp == true && baoB.camp == false && baoA.isMoving)
                 {
                     baoB.hp -= baoA.atk;
                 }
-                else if(baoB.camp == true && baoA.camp == false)
+                else if(baoB.camp == true && baoA.camp == false && baoB.isMoving)
                 {
                     baoA.hp -= baoB.atk;
                 }
@@ -547,10 +698,8 @@ void GameWidget::handleCollisions()
                 // 橡胶海豹技能：弹簧助推器 - 每次碰撞后提升2点攻击力
                 if (activeSkill && activeSkill->type == BaoBaoType::Xiangjiao) {
                     activeSkill->atk += 2;
-                    if (activeSkill->atkLabel) {
-                        activeSkill->atkLabel->setText(QString("攻击力: %1").arg(activeSkill->atk));
-                        activeSkill->atkLabel->adjustSize();
-                    }
+                    int askIdx = activeSkill - &m_baobaos[0];
+                    refreshBaoBaoLabels(askIdx);
                 }
 
                 // 天使海豹技能：按摩擒拿手 - 碰到己方队友时回复相当于攻击力的血量
@@ -558,10 +707,8 @@ void GameWidget::handleCollisions()
                     activeSkill->type == BaoBaoType::Tianshi &&
                     activeSkill->camp == passiveSkill->camp) {
                     passiveSkill->hp += activeSkill->atk;
-                    if (passiveSkill->hpLabel) {
-                        passiveSkill->hpLabel->setText(QString("%1").arg(passiveSkill->hp));
-                        passiveSkill->hpLabel->adjustSize();
-                    }
+                    int pskIdx = passiveSkill - &m_baobaos[0];
+                    refreshBaoBaoLabels(pskIdx);
                 }
 
                 // 大力海豹技能：友情接力棒 - 碰到己方队友时提升3点攻击力
@@ -569,40 +716,28 @@ void GameWidget::handleCollisions()
                     activeSkill->type == BaoBaoType::Dali &&
                     activeSkill->camp == passiveSkill->camp) {
                     passiveSkill->atk += 3;
-                    if (passiveSkill->atkLabel) {
-                        passiveSkill->atkLabel->setText(QString("攻击力: %1").arg(passiveSkill->atk));
-                        passiveSkill->atkLabel->adjustSize();
-                    }
+                    int pskIdx2 = passiveSkill - &m_baobaos[0];
+                    refreshBaoBaoLabels(pskIdx2);
                 }
 
                 // 红温海豹技能：急性高血压 - 碰撞到首个敌方海豹时造成200%攻击力的伤害，并立刻停下
+                // 增加camp==true条件，确保只有当前行动方的红温海豹才能触发技能，避免被推动的敌方红温海豹误伤
                 if (activeSkill && passiveSkill && 
                     activeSkill->type == BaoBaoType::Hongwen &&
+                    activeSkill->camp == true &&
                     activeSkill->camp != passiveSkill->camp) {
                     passiveSkill->hp -= activeSkill->atk * 2;
+                    // 强制推开，避免重叠导致后续帧反复判定
+                    QPointF sepDelta = passiveSkill->center - activeSkill->center;
+                    qreal sepDist = std::hypot(sepDelta.x(), sepDelta.y());
+                    if (sepDist < 60.0 && sepDist > 0.001) {
+                        QPointF sepNormal = sepDelta / sepDist;
+                        qreal sepOverlap = 60.0 - sepDist;
+                        passiveSkill->center += sepNormal * sepOverlap;
+                    }
                     activeSkill->remainingDistance = 0;
                     activeSkill->isMoving = false;
                     activeSkill->velocityF = QPointF(0, 0);
-                }
-
-                // 绷带海豹技能：回光返照 - 生命值低于25点时，增加10点攻击力
-                if (activeSkill && activeSkill->type == BaoBaoType::Bengdai && activeSkill->hp < 25 && !activeSkill->bengdaiBuffed) {
-                    int bonusAtk = 10;
-                    activeSkill->atk += bonusAtk;
-                    activeSkill->bengdaiBuffed = true;
-                    if (activeSkill->atkLabel) {
-                        activeSkill->atkLabel->setText(QString("攻击力: %1").arg(activeSkill->atk));
-                        activeSkill->atkLabel->adjustSize();
-                    }
-                }
-                if (passiveSkill && passiveSkill->type == BaoBaoType::Bengdai && passiveSkill->hp < 25 && !passiveSkill->bengdaiBuffed) {
-                    int bonusAtk = 10;
-                    passiveSkill->atk += bonusAtk;
-                    passiveSkill->bengdaiBuffed = true;
-                    if (passiveSkill->atkLabel) {
-                        passiveSkill->atkLabel->setText(QString("攻击力: %1").arg(passiveSkill->atk));
-                        passiveSkill->atkLabel->adjustSize();
-                    }
                 }
 
                 // ========== 2. 确定主动方和被动方 ==========
@@ -697,6 +832,8 @@ void GameWidget::handleCollisions()
             if(baoA.hp<1)
             {
                 if (i < 3) m_redDeaths++; else m_blueDeaths++;
+                updateSlLabels();  // 更新SL得分标签
+                updateSrLabels();  // 更新SR得分标签
                 if (m_redDeaths >= 6) { emit goToResultWidget(false); return; }
                 if (m_blueDeaths >= 6) { emit goToResultWidget(true); return; }
                 GameWidget::resetBaoBaoState(i);
@@ -704,6 +841,8 @@ void GameWidget::handleCollisions()
             if(baoB.hp<1)
             {
                 if (j < 3) m_redDeaths++; else m_blueDeaths++;
+                updateSlLabels();  // 更新SL得分标签
+                updateSrLabels();  // 更新SR得分标签
                 if (m_redDeaths >= 6) { emit goToResultWidget(false); return; }
                 if (m_blueDeaths >= 6) { emit goToResultWidget(true); return; }
                 GameWidget::resetBaoBaoState(j);
@@ -719,12 +858,16 @@ void GameWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // 绘制中心矩形
+    painter.drawPixmap(0, 0, m_bgPixmap);
+
+    // 绘制梯形碰撞区域
+    QPolygonF boundaryPoly;
+    for (int i = 0; i < 4; i++) boundaryPoly << m_boundaryVerts[i];
     QPen rectPen(Qt::white);
     rectPen.setWidth(4);
     painter.setPen(rectPen);
     painter.setBrush(QBrush(QColor(0, 0, 255, 20)));
-    painter.drawRect(m_centerRect);
+    painter.drawPolygon(boundaryPoly);
 
     // 绘制拖动预览（如果正在拖动）
     if (m_isDragging && m_draggedIndex != -1) {
@@ -789,6 +932,24 @@ void GameWidget::paintEvent(QPaintEvent *event)
             }
         }
     }
+}
+
+// 射线与线段交点检测
+bool GameWidget::intersectWithSegment(const QPointF& rayStart, const QPointF& rayDir, const QPointF& segA, const QPointF& segB, qreal& t)
+{
+    QPointF segDir = segB - segA;
+    qreal denom = rayDir.x() * segDir.y() - rayDir.y() * segDir.x();   // rayDir × segDir
+    if (qAbs(denom) < 0.0001) return false;
+
+    QPointF d = rayStart - segA;                                        // = -(segA - rayStart)
+    qreal tRay = -(d.x() * segDir.y() - d.y() * segDir.x()) / denom;   // (segA - rayStart)×segDir / (rayDir×segDir)
+    qreal tSeg = -(d.x() * rayDir.y() - d.y() * rayDir.x()) / denom;   // (segA - rayStart)×rayDir / (rayDir×segDir)
+
+    if (tRay > 0 && tSeg >= 0 && tSeg <= 1) {
+        t = tRay;
+        return true;
+    }
+    return false;
 }
 
 // 射线与矩形边界的交点计算
@@ -874,7 +1035,7 @@ QVector<QPointF> GameWidget::calculateReflectionPath(const QPointF& start, const
     QVector<QPointF> points;
     points.append(start);
 
-    qreal radius = 40.0;
+    qreal radius = 30.0;
     QPointF currentPos = start + direction * (radius + 1.0);
     QPointF currentDir = direction;
     qreal remainingLength = maxLength;
@@ -886,14 +1047,26 @@ QVector<QPointF> GameWidget::calculateReflectionPath(const QPointF& start, const
         int hitType = -1;  // 0=边界, 1=豹豹
         int hitIndex = -1;
 
-        // 1. 检查与边界矩形的交点
-        QRect boundRect = m_centerRect.adjusted(radius, radius, -radius, -radius);
-        QPointF boundHit = intersectWithRect(currentPos, currentDir, boundRect);
-        qreal tBound = QPointF::dotProduct(boundHit - currentPos, currentDir);
-        if (tBound > 0.001 && tBound < minT) {
-            minT = tBound;
-            hitPoint = boundHit;
-            hitType = 0;
+        // 1. 检查与梯形边界的交点（每条边向内偏移半径）
+        for (int e = 0; e < 4; e++) {
+            QPointF v0 = m_boundaryVerts[e];
+            QPointF v1 = m_boundaryVerts[(e + 1) % 4];
+            QPointF edgeDir = v1 - v0;
+            qreal edgeLen = std::hypot(edgeDir.x(), edgeDir.y());
+            if (edgeLen < 0.001) continue;
+            // 向内法线：顺时针顶点排列，法线指向左侧（多边形内部）
+            QPointF inNormal(-edgeDir.y() / edgeLen, edgeDir.x() / edgeLen);
+            QPointF ov0 = v0 + inNormal * radius;
+            QPointF ov1 = v1 + inNormal * radius;
+
+            qreal tEdge;
+            if (intersectWithSegment(currentPos, currentDir, ov0, ov1, tEdge)) {
+                if (tEdge > 0.001 && tEdge < minT) {
+                    minT = tEdge;
+                    hitPoint = currentPos + currentDir * tEdge;
+                    hitType = 0;
+                }
+            }
         }
 
         // 2. 检查与其他豹豹的交点（排除自己）
@@ -901,7 +1074,7 @@ QVector<QPointF> GameWidget::calculateReflectionPath(const QPointF& start, const
             if (i == m_draggedIndex) continue;  // 跳过自己
 
             qreal tCircle;
-            if (intersectWithCircle(currentPos, currentDir, m_baobaos[i].center, 80, tCircle)) {
+            if (intersectWithCircle(currentPos, currentDir, m_baobaos[i].center, 60, tCircle)) {
                 if (tCircle > 0.001 && tCircle < minT) {
                     minT = tCircle;
                     hitPoint = currentPos + currentDir * tCircle;
@@ -924,17 +1097,24 @@ QVector<QPointF> GameWidget::calculateReflectionPath(const QPointF& start, const
 
         // 根据碰撞类型计算反射方向
         if (hitType == 0) {
-            // 边界反射 - 使用法线向量计算
+            // 边界反射 - 找到被击中的边并计算反射法线
             QPointF normal;
-
-            if (qAbs(hitPoint.x() - boundRect.left()) < 1.0) {
-                normal = QPointF(-1, 0);
-            } else if (qAbs(hitPoint.x() - boundRect.right()) < 1.0) {
-                normal = QPointF(1, 0);
-            } else if (qAbs(hitPoint.y() - boundRect.top()) < 1.0) {
-                normal = QPointF(0, -1);
-            } else if (qAbs(hitPoint.y() - boundRect.bottom()) < 1.0) {
-                normal = QPointF(0, 1);
+            qreal minEdgeDist = 1e9;
+            for (int e = 0; e < 4; e++) {
+                QPointF v0 = m_boundaryVerts[e];
+                QPointF v1 = m_boundaryVerts[(e + 1) % 4];
+                QPointF edgeDir = v1 - v0;
+                qreal edgeLenSq = QPointF::dotProduct(edgeDir, edgeDir);
+                qreal t = (edgeLenSq > 0.001) ? QPointF::dotProduct(hitPoint - v0, edgeDir) / edgeLenSq : 0;
+                t = qBound(0.0, t, 1.0);
+                QPointF closest = v0 + edgeDir * t;
+                qreal dist = std::hypot(hitPoint.x() - closest.x(), hitPoint.y() - closest.y());
+                if (dist < minEdgeDist) {
+                    minEdgeDist = dist;
+                    normal = QPointF(-edgeDir.y(), edgeDir.x());
+                    qreal nLen = std::hypot(normal.x(), normal.y());
+                    if (nLen > 0.001) normal /= nLen;
+                }
             }
 
             // 反射公式: R = V - 2*(V·N)*N
@@ -976,13 +1156,13 @@ void GameWidget::resetBaoBaoState(int index)
 
     auto &bao = m_baobaos[index];
 
-    // 根据阵营和索引重置初始位置
-        if (index == 0) bao.center = QPointF(300, 450);
-        else if (index == 1) bao.center = QPointF(500, 450);
-        else if (index == 2) bao.center = QPointF(700, 450);
-        else if (index == 3) bao.center = QPointF(900, 450);
-        else if (index == 4) bao.center = QPointF(1100, 450);
-        else if (index == 5) bao.center = QPointF(1300, 450);
+    // 根据阵营和索引重置初始位置（百分比坐标）
+        if (index == 0) bao.center = QPointF(70.99 / 100.0 * 1600, 32.96 / 100.0 * 900);
+        else if (index == 1) bao.center = QPointF(66.56 / 100.0 * 1600, 48.33 / 100.0 * 900);
+        else if (index == 2) bao.center = QPointF(73.44 / 100.0 * 1600, 65.28 / 100.0 * 900);
+        else if (index == 3) bao.center = QPointF(29.64 / 100.0 * 1600, 33.15 / 100.0 * 900);
+        else if (index == 4) bao.center = QPointF(34.22 / 100.0 * 1600, 48.15 / 100.0 * 900);
+        else if (index == 5) bao.center = QPointF(27.03 / 100.0 * 1600, 65.28 / 100.0 * 900);
 
 
     // 重置物理状态
@@ -1006,19 +1186,8 @@ void GameWidget::resetBaoBaoState(int index)
         bao.label->move(bao.collisionRect.x(), bao.collisionRect.y());
     }
 
-    // 更新血量显示
-    if (bao.hpLabel) {
-        bao.hpLabel->setText(QString("%1").arg(bao.hp));
-        bao.hpLabel->adjustSize();
-        bao.hpLabel->move(bao.collisionRect.x() + 10, bao.collisionRect.y() + 85);
-    }
-
-    // 更新攻击力显示
-    if (bao.atkLabel) {
-        bao.atkLabel->setText(QString("攻击力: %1").arg(bao.atk));
-        bao.atkLabel->adjustSize();
-        bao.atkLabel->move(bao.collisionRect.x() + 10, bao.collisionRect.y() + 110);
-    }
+    // 刷新标签显示
+    refreshBaoBaoLabels(index);
 
     for(int i=0; i<index; i++)
     {
@@ -1038,7 +1207,7 @@ bool GameWidget::collisionDetection(BaoBaoObject &baoA ,BaoBaoObject &baoB)
     // 计算两个圆心之间的距离
     QPointF delta = baoA.center - baoB.center;
     qreal distance = std::sqrt(delta.x() * delta.x() + delta.y() * delta.y());
-    qreal minDistance = 80.0;  // 半径之和 (40 + 40)
+    qreal minDistance = 60.0;  // 半径之和 (30 + 30)
 
     // 发生碰撞
     if (distance < minDistance)
@@ -1080,8 +1249,8 @@ bool GameWidget::collisionDetection(BaoBaoObject &baoA ,BaoBaoObject &baoB)
 void GameWidget::drawRotatingDecoration(QPainter& painter, BaoBaoObject& bao) {
     painter.save();
     QPointF center = bao.center;
-    qreal innerRadius = 45;
-    qreal outerRadius = 55;
+    qreal innerRadius = 35;
+    qreal outerRadius = 45;
     qreal ringWidth = outerRadius - innerRadius;
     // 移动到豹豹中心并旋转
     painter.translate(center);
@@ -1135,15 +1304,64 @@ void GameWidget::drawRotatingDecoration(QPainter& painter, BaoBaoObject& bao) {
     painter.restore();
 }
 
+void GameWidget::refreshBaoBaoLabels(int index)
+{
+    auto& bao = m_baobaos[index];
+    if (!bao.hpLabel || !bao.atkLabel) return;
+
+    // 绷带海豹动态buff：血量低于25获得+10攻击力，高于等于25则失去
+    if (bao.type == BaoBaoType::Bengdai) {
+        if (bao.hp < 25 && !bao.bengdaiBuffed) {
+            bao.atk += 10;
+            bao.bengdaiBuffed = true;
+        } else if (bao.hp >= 25 && bao.bengdaiBuffed) {
+            bao.atk -= 10;
+            bao.bengdaiBuffed = false;
+        }
+    }
+
+    // 紧贴豹豹底部放置标签（豹豹60x60）
+    bao.hpLabel->move(bao.collisionRect.x() + 8, bao.collisionRect.y() + 56);
+    bao.atkLabel->move(bao.collisionRect.x() + 8, bao.collisionRect.y() + 72);
+
+    BaoBaoStats defStats = getBaoBaoStats(bao.type);
+
+    // 血量颜色和字号：个位数红色18px，高于默认亮绿18px，否则白色14px
+    QString hpColor = "white";
+    int hpFontSize = 14;
+    if (bao.hp < 10) { hpColor = "#ff4444"; hpFontSize = 18; }
+    else if (bao.hp > defStats.hp) { hpColor = "#00ff00"; hpFontSize = 18; }
+
+    // 攻击力颜色和字号：高于默认亮绿16px，否则浅红12px
+    QString atkColor = "white";
+    int atkFontSize = 12;
+    if (bao.atk > defStats.atk) { atkColor = "#00ff00"; atkFontSize = 16; }
+
+    bao.hpLabel->setStyleSheet(
+        QString("QLabel { color: %1; font-size: %2px; font-weight: bold;"
+                " background-color: transparent; border-radius: 10px; padding: 2px 5px; }")
+            .arg(hpColor).arg(hpFontSize));
+
+    bao.atkLabel->setStyleSheet(
+        QString("QLabel { color: %1; font-size: %2px; font-weight: bold;"
+                " background-color: transparent; border-radius: 8px; padding: 2px 5px; }")
+            .arg(atkColor).arg(atkFontSize));
+
+    bao.hpLabel->setText(QString("%1").arg(bao.hp));
+    bao.hpLabel->adjustSize();
+    bao.atkLabel->setText(QString("攻击力: %1").arg(bao.atk));
+    bao.atkLabel->adjustSize();
+}
+
 void GameWidget::setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<BaoBaoType>& p2Types) {
-    // 重置所有豹豹到默认位置
+    // 重置所有豹豹到默认位置（百分比坐标）
     QPointF defaultPositions[6] = {
-        QPointF(300, 450),
-        QPointF(500, 450),
-        QPointF(700, 450),
-        QPointF(900, 450),
-        QPointF(1100, 450),
-        QPointF(1300, 450)
+        QPointF(70.99 / 100.0 * 1600, 32.96 / 100.0 * 900),   // 豹豹1
+        QPointF(66.56 / 100.0 * 1600, 48.33 / 100.0 * 900),   // 豹豹2
+        QPointF(73.44 / 100.0 * 1600, 65.28 / 100.0 * 900),   // 豹豹3
+        QPointF(29.64 / 100.0 * 1600, 33.15 / 100.0 * 900),   // 豹豹4
+        QPointF(34.22 / 100.0 * 1600, 48.15 / 100.0 * 900),   // 豹豹5
+        QPointF(27.03 / 100.0 * 1600, 65.28 / 100.0 * 900),   // 豹豹6
     };
     
     for (int i = 0; i < 3; i++) {
@@ -1161,14 +1379,14 @@ void GameWidget::setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<
             
             QString imagePath = getBaoBaoImagePath(p1Types[i]);
             QPixmap originalPixmap(imagePath);
-            QPixmap circlePixmap(80, 80);
+            QPixmap circlePixmap(60, 60);
             circlePixmap.fill(Qt::transparent);
             QPainter painter(&circlePixmap);
             painter.setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
-            path.addEllipse(0, 0, 80, 80);
+            path.addEllipse(0, 0, 60, 60);
             painter.setClipPath(path);
-            painter.drawPixmap(0, 0, 80, 80, originalPixmap);
+            painter.drawPixmap(0, 0, 60, 60, originalPixmap);
             painter.end();
             
             if (m_baobaos[i].label) {
@@ -1191,14 +1409,14 @@ void GameWidget::setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<
             
             QString imagePath = getBaoBaoImagePath(p2Types[i]);
             QPixmap originalPixmap(imagePath);
-            QPixmap circlePixmap(80, 80);
+            QPixmap circlePixmap(60, 60);
             circlePixmap.fill(Qt::transparent);
             QPainter painter(&circlePixmap);
             painter.setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
-            path.addEllipse(0, 0, 80, 80);
+            path.addEllipse(0, 0, 60, 60);
             painter.setClipPath(path);
-            painter.drawPixmap(0, 0, 80, 80, originalPixmap);
+            painter.drawPixmap(0, 0, 60, 60, originalPixmap);
             painter.end();
             
             if (m_baobaos[i + 3].label) {
@@ -1208,31 +1426,38 @@ void GameWidget::setSelectedTypes(const QList<BaoBaoType>& p1Types, const QList<
     }
     for (int i = 0; i < m_baobaos.size(); i++) {
         auto& bao = m_baobaos[i];
-        if (bao.hpLabel) {
-            bao.hpLabel->setText(QString("%1").arg(bao.hp));
-            bao.hpLabel->adjustSize();
-        }
-        if (bao.atkLabel) {
-            bao.atkLabel->setText(QString("攻击力: %1").arg(bao.atk));
-            bao.atkLabel->adjustSize();
-        }
         // 更新碰撞箱和标签位置
         bao.collisionRect.moveCenter(bao.center.toPoint());
         if (bao.label) {
             bao.label->move(bao.collisionRect.x(), bao.collisionRect.y());
         }
-        if (bao.hpLabel) {
-            bao.hpLabel->move(bao.collisionRect.x() + 10, bao.collisionRect.y() + 85);
-        }
-        if (bao.atkLabel) {
-            bao.atkLabel->move(bao.collisionRect.x() + 10, bao.collisionRect.y() + 110);
-        }
+        refreshBaoBaoLabels(i);
     }
     m_redDeaths = 0;
     m_blueDeaths = 0;
     order = true;
     m_p1Types = p1Types;
     m_p2Types = p2Types;
+
+    updateSlLabels();  // 重置SL得分标签
+    updateSrLabels();  // 重置SR得分标签
+
+    for (int i = 0; i < 3 && i < p1Types.size(); i++) {
+        int idx = getTouxiangIndex(p1Types[i]);
+        if (idx >= 0 && idx < 6 && m_touxiangLabels[i]) {
+            m_touxiangLabels[i]->setPixmap(m_touxiangPixmaps[idx]);
+            m_touxiangLabels[i]->show();
+        }
+    }
+    for (int i = 0; i < 3 && i < p2Types.size(); i++) {
+        int idx = getTouxiangIndex(p2Types[i]);
+        if (idx >= 0 && idx < 6 && m_touxiangLabels2[i]) {
+            m_touxiangLabels2[i]->setPixmap(m_touxiangPixmaps2[idx]);
+            m_touxiangLabels2[i]->show();
+        }
+    }
+    updateSlLabels();  // 重置SL得分标签
+    updateSrLabels();  // 重置SR得分标签
 }
 
 void GameWidget::resetGame()
@@ -1255,14 +1480,16 @@ void GameWidget::resetGame()
     }
 
     for (int i = 0; i < 6; i++) {
-        switch (i) {
-        case 0: m_baobaos[i].center = QPointF(300, 450); break;
-        case 1: m_baobaos[i].center = QPointF(500, 450); break;
-        case 2: m_baobaos[i].center = QPointF(700, 450); break;
-        case 3: m_baobaos[i].center = QPointF(900, 450); break;
-        case 4: m_baobaos[i].center = QPointF(1100, 450); break;
-        case 5: m_baobaos[i].center = QPointF(1300, 450); break;
-        }
+        // 默认位置（百分比坐标）
+        QPointF defaultPositions[6] = {
+            QPointF(70.99 / 100.0 * 1600, 32.96 / 100.0 * 900),   // 豹豹1
+            QPointF(66.56 / 100.0 * 1600, 48.33 / 100.0 * 900),   // 豹豹2
+            QPointF(73.44 / 100.0 * 1600, 65.28 / 100.0 * 900),   // 豹豹3
+            QPointF(29.64 / 100.0 * 1600, 33.15 / 100.0 * 900),   // 豹豹4
+            QPointF(34.22 / 100.0 * 1600, 48.15 / 100.0 * 900),   // 豹豹5
+            QPointF(27.03 / 100.0 * 1600, 65.28 / 100.0 * 900),   // 豹豹6
+        };
+        m_baobaos[i].center = defaultPositions[i];
         m_baobaos[i].velocityF = QPointF(0, 0);
         m_baobaos[i].remainingDistance = 0;
         m_baobaos[i].isMoving = false;
@@ -1277,29 +1504,20 @@ void GameWidget::resetGame()
         if (m_baobaos[i].label) {
             m_baobaos[i].label->move(m_baobaos[i].collisionRect.x(), m_baobaos[i].collisionRect.y());
         }
-        if (m_baobaos[i].hpLabel) {
-            m_baobaos[i].hpLabel->setText(QString("%1").arg(m_baobaos[i].hp));
-            m_baobaos[i].hpLabel->adjustSize();
-            m_baobaos[i].hpLabel->move(m_baobaos[i].collisionRect.x() + 10, m_baobaos[i].collisionRect.y() + 85);
-        }
-        if (m_baobaos[i].atkLabel) {
-            m_baobaos[i].atkLabel->setText(QString("攻击力: %1").arg(m_baobaos[i].atk));
-            m_baobaos[i].atkLabel->adjustSize();
-            m_baobaos[i].atkLabel->move(m_baobaos[i].collisionRect.x() + 10, m_baobaos[i].collisionRect.y() + 110);
-        }
+        refreshBaoBaoLabels(i);
     }
 
     for (int i = 0; i < 3 && i < m_p1Types.size(); i++) {
         QString imagePath = getBaoBaoImagePath(m_p1Types[i]);
         QPixmap originalPixmap(imagePath);
-        QPixmap circlePixmap(80, 80);
+        QPixmap circlePixmap(60, 60);
         circlePixmap.fill(Qt::transparent);
         QPainter painter(&circlePixmap);
         painter.setRenderHint(QPainter::Antialiasing);
         QPainterPath path;
-        path.addEllipse(0, 0, 80, 80);
+        path.addEllipse(0, 0, 60, 60);
         painter.setClipPath(path);
-        painter.drawPixmap(0, 0, 80, 80, originalPixmap);
+        painter.drawPixmap(0, 0, 60, 60, originalPixmap);
         painter.end();
         if (m_baobaos[i].label) {
             m_baobaos[i].label->setPixmap(circlePixmap);
@@ -1308,17 +1526,34 @@ void GameWidget::resetGame()
     for (int i = 0; i < 3 && i < m_p2Types.size(); i++) {
         QString imagePath = getBaoBaoImagePath(m_p2Types[i]);
         QPixmap originalPixmap(imagePath);
-        QPixmap circlePixmap(80, 80);
+        QPixmap circlePixmap(60, 60);
         circlePixmap.fill(Qt::transparent);
         QPainter painter(&circlePixmap);
         painter.setRenderHint(QPainter::Antialiasing);
         QPainterPath path;
-        path.addEllipse(0, 0, 80, 80);
+        path.addEllipse(0, 0, 60, 60);
         painter.setClipPath(path);
-        painter.drawPixmap(0, 0, 80, 80, originalPixmap);
+        painter.drawPixmap(0, 0, 60, 60, originalPixmap);
         painter.end();
         if (m_baobaos[i + 3].label) {
             m_baobaos[i + 3].label->setPixmap(circlePixmap);
         }
     }
+    for (int i = 0; i < 3 && i < m_p1Types.size(); i++) {
+        int idx = getTouxiangIndex(m_p1Types[i]);
+        if (idx >= 0 && idx < 6 && m_touxiangLabels[i]) {
+            m_touxiangLabels[i]->setPixmap(m_touxiangPixmaps[idx]);
+            m_touxiangLabels[i]->show();
+        }
+    }
+    for (int i = 0; i < 3 && i < m_p2Types.size(); i++) {
+        int idx = getTouxiangIndex(m_p2Types[i]);
+        if (idx >= 0 && idx < 6 && m_touxiangLabels2[i]) {
+            m_touxiangLabels2[i]->setPixmap(m_touxiangPixmaps2[idx]);
+            m_touxiangLabels2[i]->show();
+        }
+    }
+    updateSlLabels();  // 重置SL得分标签
+    updateSrLabels();  // 重置SR得分标签
 }
+
