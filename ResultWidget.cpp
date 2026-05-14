@@ -1,10 +1,14 @@
-#include "ResultWidget.h"
+﻿#include "ResultWidget.h"
 
 ResultWidget::ResultWidget(QWidget *parent)
     : QWidget{parent}
 {
     setFixedSize(1600, 900);
 
+    // 结算界面背景色
+    setStyleSheet("ResultWidget { background-color: rgba(20, 20, 40, 230); }");
+
+    // 获胜标签（初始空文本，由setWinnerText设置）
     winnerLabel = new QLabel(this);
     winnerLabel->setAlignment(Qt::AlignCenter);
     winnerLabel->setStyleSheet(
@@ -18,6 +22,7 @@ ResultWidget::ResultWidget(QWidget *parent)
         "}"
     );
 
+    // 再来一局按钮（蓝色渐变，与PLAY按钮同款样式）
     ReplayButton = new QPushButton(this);
     ReplayButton->setText("再来一局");
     ReplayButton->setFixedSize(300, 80);
@@ -38,6 +43,7 @@ ResultWidget::ResultWidget(QWidget *parent)
         "}"
     );
 
+    // 重新选择按钮（红色渐变，警示色调）
     ReselectButton = new QPushButton(this);
     ReselectButton->setText("重新选择");
     ReselectButton->setFixedSize(300, 80);
@@ -58,6 +64,7 @@ ResultWidget::ResultWidget(QWidget *parent)
         "}"
     );
 
+    // 垂直居中布局
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setAlignment(Qt::AlignCenter);
     layout->addStretch();
